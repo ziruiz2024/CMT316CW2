@@ -25,5 +25,4 @@ Person 6
 is tasked with implementing the machine learning model and detailing this in the "4. Experimental Setting".
 
 Person 7
-
 will compile our results and document them in the "5. Results" section.
