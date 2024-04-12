@@ -8,13 +8,14 @@ To run the code, ensure the working directory is in the following structure
 
 ```
 {working directory}/
+    Annotation
+    Images
     lists/
         test_list.mat
         train_list.mat
-        file_list.mat
-    Annotation
-    resnet18-f37072fd.pth        
+        file_list.mat        
     main.ipynb
+    resnet18-f37072fd.pth
 ```
 
 Then, open `main.ipynb` and run the notebook using Jupyter Notebook or other compatible software.
