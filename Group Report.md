@@ -74,177 +74,31 @@ The training batch size for stochastic gradient descent algorithm will be tested
 
 The results of the accuracies are listed as follows:
 
-<div style="text-align: center;">
-<table border="1">
-   <tr>
-      <th></th>
-      <th>model</th>
-      <th>batch_size</th>
-      <th>train_acc_best</th>
-      <th>test_acc_best</th>
-   </tr>
-   <tr>
-      <td>0</td>
-      <td>resnet18</td>
-      <td>32</td>
-      <td>0.8952</td>
-      <td>0.7901</td>
-   </tr>
-   <tr>
-      <td>1</td>
-      <td>resnet18</td>
-      <td>64</td>
-      <td>0.8923</td>
-      <td>0.7921</td>
-   </tr>
-   <tr>
-      <td>2</td>
-      <td>resnet18</td>
-      <td>128</td>
-      <td>0.8804</td>
-      <td>0.7939</td>
-   </tr>
-   <tr>
-      <td>3</td>
-      <td>resnet34</td>
-      <td>32</td>
-      <td>0.9104</td>
-      <td>0.8091</td>
-   </tr>
-   <tr>
-      <td>4</td>
-      <td>resnet34</td>
-      <td>64</td>
-      <td>0.9048</td>
-      <td>0.8253</td>
-   </tr>
-   <tr>
-      <td>5</td>
-      <td>resnet34</td>
-      <td>128</td>
-      <td>0.9158</td>
-      <td>0.8282</td>
-   </tr>
-   <tr>
-      <td>6</td>
-      <td>resnet50</td>
-      <td>32</td>
-      <td>0.9069</td>
-      <td>0.8393</td>
-   </tr>
-   <tr>
-      <td>7</td>
-      <td>resnet50</td>
-      <td>64</td>
-      <td>0.9097</td>
-      <td>0.8488</td>
-   </tr>
-   <tr>
-      <td>8</td>
-      <td>resnet101</td>
-      <td>32</td>
-      <td>0.9293</td>
-      <td>0.829</td>
-   </tr>
-   <tr>
-      <td>9</td>
-      <td>resnet152</td>
-      <td>32</td>
-      <td>0.9415</td>
-      <td>0.8228</td>
-   </tr>
-   <tr>
-      <td>10</td>
-      <td>efficientnet_b0</td>
-      <td>32</td>
-      <td>0.8962</td>
-      <td>0.8439</td>
-   </tr>
-   <tr>
-      <td>11</td>
-      <td>efficientnet_b0</td>
-      <td>64</td>
-      <td>0.901</td>
-      <td>0.8452</td>
-   </tr>
-   <tr>
-      <td>12</td>
-      <td>efficientnet_b1</td>
-      <td>32</td>
-      <td>0.9046</td>
-      <td>0.8643</td>
-   </tr>
-   <tr>
-      <td>13</td>
-      <td>efficientnet_b2</td>
-      <td>32</td>
-      <td>0.912</td>
-      <td>0.8731</td>
-   </tr>
-   <tr>
-      <td>14</td>
-      <td>efficientnet_b3</td>
-      <td>32</td>
-      <td>0.9059</td>
-      <td>0.8758</td>
-   </tr>
-   <tr>
-      <td>15</td>
-      <td>efficientnet_b4</td>
-      <td>32</td>
-      <td>0.901</td>
-      <td>0.8974</td>
-   </tr>
-   <tr>
-      <td>16</td>
-      <td>efficientnet_b1</td>
-      <td>64</td>
-      <td>0.919</td>
-      <td>0.877</td>
-   </tr>
-   <tr>
-      <td>17</td>
-      <td>vit_b_16</td>
-      <td>32</td>
-      <td>0.9463</td>
-      <td>0.8853</td>
-   </tr>
-   <tr>
-      <td>18</td>
-      <td>vit_b_32</td>
-      <td>32</td>
-      <td>0.9357</td>
-      <td>0.7441</td>
-   </tr>
-   <tr>
-      <td>19</td>
-      <td>vit_b_32</td>
-      <td>64</td>
-      <td>0.9347</td>
-      <td>0.5486</td>
-   </tr>
-   <tr>
-      <td>20</td>
-      <td>vit_b_32</td>
-      <td>128</td>
-      <td>0.9295</td>
-      <td>0.8333</td>
-   </tr>
-   <tr>
-      <td>21</td>
-      <td>twolayerscnn</td>
-      <td>32</td>
-      <td>0.3427</td>
-      <td>0.1871</td>
-   </tr>
-   <tr>
-      <td>22</td>
-      <td>twolayerscnn</td>
-      <td>64</td>
-      <td>0.2402</td>
-      <td>0.1596</td>
-   </tr>
-</table>
+| | model | batch_size | train_acc_best | test_acc_best |
+| --- | --- | --- | --- | --- |
+|0|	resnet18|	32|	0.8952|	0.7901|
+|1|	resnet18|	64|	0.8923|	0.7921|
+|2|	resnet18|	128|	0.8804|	0.7939|
+|3|	resnet34|	32|	0.9104|	0.8091|
+|4|	resnet34|	64|	0.9048|	0.8253|
+|5|	resnet34|	128|	0.9158|	0.8282|
+|6|	resnet50|	32|	0.9069|	0.8393|
+|7|	resnet50|	64|	0.9097|	0.8488|
+|8|	resnet101|	32|	0.9293|	0.829|
+|9|	resnet152|	32|	0.9415|	0.8228|
+|10|	efficientnet_b0|	32|	0.8962|	0.8439|
+|11|	efficientnet_b0|	64|	0.901|	0.8452|
+|12|	efficientnet_b1|	32|	0.9046|	0.8643|
+|13|	efficientnet_b2|	32|	0.912|	0.8731|
+|14|	efficientnet_b3|	32|	0.9059|	0.8758|
+|15|	efficientnet_b4|	32|	0.901|	0.8974|
+|16|	efficientnet_b1|	64|	0.919|	0.877|
+|17|	vit_b_16|	32|	0.9463|	0.8853|
+|18|	vit_b_32|	32|	0.9357|	0.7441|
+|19|	vit_b_32|	64|	0.9347|	0.5486|
+|20|	vit_b_32|	128|	0.9295|	0.8333|
+|21|	twolayerscnn|	32|	0.3427|	0.1871|
+|22|	twolayerscnn|	64|	0.2402|	0.1596|
 
 The loss histories of the models are shown in the following figures:
 
