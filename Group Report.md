@@ -75,7 +75,7 @@ The training batch size for stochastic gradient descent algorithm will be tested
 The results of the accuracies are listed as follows:
 
 | | model | batch_size | train_acc_best | test_acc_best |
-|----------|----------|----------|----------|----------|
+| :---: | :---: | :---: | :---: | :---: |
 |0|	resnet18|	32|	0.8952|	0.7901|
 |1|	resnet18|	64|	0.8923|	0.7921|
 |2|	resnet18|	128|	0.8804|	0.7939|
