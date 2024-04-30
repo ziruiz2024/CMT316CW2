@@ -68,7 +68,43 @@ In order to optimise the hyper parameters of the model a development set consist
 
 ## 4. Experimental setting
 
-Description of the specific details of the evaluation (e.g. parameter tuning, usage of the development set).
+A simple version of CNN model with two convolutional layers will be experimented to compare with a variety of deep learning architectures. Tested architectures include ResNet18, ResNet34, ResNet50, ResNet101, ResNet152, EfficientNetb0, EfficientNetb1, EfficientNetb2, EfficientNetb3, EfficientNetb4, ViT-b-16, and ViT-b-32. ResNet and EfficientNet are fully convolutional models - they stack convolutional layers to form a deep network. ViT is a transformer-based model which is a popular architecture in recent years designed for natural language processing tasks. These models are all pre-trained on ImageNet dataset and fine-tuned on the dataset used in this project.
+
+The training batch size for stochastic gradient descent algorithm will be tested for 32, 64, and 128. Some of the models fail to run on my GeForce RTX 3080 GPU with batch size 64 or 128 due to the limitation of GPU memory. The other experiment settings are fixed as follows: the data will be randomly flipped horizontally and then normalized with mean and standard deviation of ImageNet dataset. The input resolution to each model is set fixed as 224x224 by random cropping and resizing. We used the Adam optimizer, with learning rate set to 0.0001 initially. The scheduler will reduce the learning rate by a factor of 0.1 if the validation accuracy does not improve for 3 consecutive epochs. The training will stop if the learning rate drops below 1e-6. This setting is applied to all models for fair comparison. The loss function is set to cross-entropy loss.
+
+The results of the accuracies are listed as follows:
+
+| | model | batch_size | train_acc_best | test_acc_best |
+|----------|----------|----------|----------|----------|
+|0|	resnet18|	32|	0.8952|	0.7901|
+|1|	resnet18|	64|	0.8923|	0.7921|
+|2|	resnet18|	128|	0.8804|	0.7939|
+|3|	resnet34|	32|	0.9104|	0.8091|
+|4|	resnet34|	64|	0.9048|	0.8253|
+|5|	resnet34|	128|	0.9158|	0.8282|
+|6|	resnet50|	32|	0.9069|	0.8393|
+|7|	resnet50|	64|	0.9097|	0.8488|
+|8|	resnet101|	32|	0.9293|	0.829|
+|9|	resnet152|	32|	0.9415|	0.8228|
+|10|	efficientnet_b0|	32|	0.8962|	0.8439|
+|11|	efficientnet_b0|	64|	0.901|	0.8452|
+|12|	efficientnet_b1|	32|	0.9046|	0.8643|
+|13|	efficientnet_b2|	32|	0.912|	0.8731|
+|14|	efficientnet_b3|	32|	0.9059|	0.8758|
+|15|	efficientnet_b4|	32|	0.901|	0.8974|
+|16|	efficientnet_b1|	64|	0.919|	0.877|
+|17|	vit_b_16|	32|	0.9463|	0.8853|
+|18|	vit_b_32|	32|	0.9357|	0.7441|
+|19|	vit_b_32|	64|	0.9347|	0.5486|
+|20|	vit_b_32|	128|	0.9295|	0.8333|
+|21|	twolayerscnn|	32|	0.3427|	0.1871|
+|22|	twolayerscnn|	64|	0.2402|	0.1596|
+
+The loss histories of the models are shown in the following figures:
+
+From the plots, we see that the general trends for each deep learning models are similar, where the loss quickly dropped to very low and then fluctuated around certain values. The sudden increases in the test accuracies are caused by the learning rate reduction. There are no sign of overfitting.
+
+To make a comparison, we first observe that the two-layers CNN model struggled to converge, as the loss only decreased slightly and the test accuracy was very low. The result reveals that EfficientNetb4 obtained the highest accuracy, where ViT series are the second, and ResNet series are the worst. The accuracies increased with the increase in batch size, that means smaller batch size can lead to more stable convergence. This can also be reflected in the loss history plot, it is apparent that the loss of models with smaller batch size fluctuated in less magnitude. Furthermore, within a same architecture, the models with larger capacity (e.g. ResNet152 vs ResNet18) tend to have better performance, this reveals that the complexity of the model is crucial to classifying this specific dataset. If better hardwares are available, we believe that the performance of the models can be further improved by increasing the batch size and the size of the model, considering they are not yet overfitting and still have room for improvement.
 
 ## 5. Results
 
