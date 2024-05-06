@@ -1,28 +1,27 @@
-import tkinter as tk
-import os
-import os.path as op
-import glob
+import xml.etree.ElementTree as ET
 import torch
 import torch.nn as nn
-import pandas as pd
-import math
-import numpy as np 
-import xml.etree.ElementTree as ET
+import tkinter as tk
 import pickle
-from pathlib import Path
-from tkinter import messagebox,ttk
-from scipy.io import loadmat
-from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
+import pandas as pd
+import os
+import os.path as op
+import numpy as np 
+import math
 from tqdm import tqdm
-from sklearn import metrics
-from matplotlib import pyplot as plt
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 from torchvision.models import (
     efficientnet_b0, efficientnet_b1, efficientnet_b2, efficientnet_b3,
     vit_b_16, vit_b_32, vit_l_16, vit_l_32, 
 )
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+from tkinter import ttk
+from sklearn import metrics
+from scipy.io import loadmat
+from PIL import Image
+from pathlib import Path
+from matplotlib import pyplot as plt
 
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
@@ -225,6 +224,14 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
     test_iters_per_epoch = len(test_dataloader)
     train_accs = []
     test_accs = []
+    train_recall = []
+    test_recall = []
+    test_confusion_matrix = []
+    train_confusion_matrix = []
+    train_precision = []
+    test_precision = []
+    train_f1 = []
+    test_f1 = []
 
     epoch = 1
     while True:
@@ -255,6 +262,10 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
                 y_true.extend(labels.cpu().numpy())
                 y_pred.extend(predicted.cpu().numpy())
         test_accs.append(metrics.accuracy_score(y_true, y_pred))
+        test_recall.append(metrics.recall_score(y_true, y_pred, average='weighted', zero_division=1))
+        test_precision.append(metrics.precision_score(y_true, y_pred, average='weighted', zero_division=1))
+        test_f1.append(metrics.f1_score(y_true, y_pred, average='weighted', zero_division=1))
+        test_confusion_matrix.append(metrics.confusion_matrix(y_true, y_pred))
 
         # Evaluate the model on training set
         y_true = []
@@ -268,12 +279,24 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
                 y_true.extend(labels.cpu().numpy())
                 y_pred.extend(predicted.cpu().numpy())
         train_accs.append(metrics.accuracy_score(y_true, y_pred))
+        train_recall.append(metrics.recall_score(y_true, y_pred, average='weighted', zero_division=1))
+        train_precision.append(metrics.precision_score(y_true, y_pred, average='weighted', zero_division=1))
+        train_f1.append(metrics.f1_score(y_true, y_pred, average='weighted', zero_division=1))
+        train_confusion_matrix.append(metrics.confusion_matrix(y_true, y_pred))
 
         # Print the loss and accuracy
         print("Train Loss: ", np.mean(train_losses[-train_iters_per_epoch:]))
         print("Test Loss: ", np.mean(test_losses[-test_iters_per_epoch:]))
         print("Train Accuracy: ", train_accs[-1])
         print("Test Accuracy: ", test_accs[-1])
+        print("Train Recall: ", train_recall[-1])
+        print("Test Recall: ", test_recall[-1])
+        print("Train Precision: ", train_precision[-1])
+        print("Test Precision: ", test_precision[-1])
+        print("Train F1-Score: ", train_f1[-1])
+        print("Test F1-Score: ", test_f1[-1])
+        print("Train Confusion Matrix: ", train_confusion_matrix[-1])
+        print("Test Confusion Matrix: ", test_confusion_matrix[-1])
         
         scheduler.step(test_accs[-1])
         if optimizer.param_groups[0]['lr'] < 1e-6:
@@ -287,8 +310,17 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
         train_losses=train_losses,
         test_losses=test_losses,
         train_accs=train_accs,
-        test_accs=test_accs
-    )
+        test_accs=test_accs,
+        train_recall=train_recall,
+        test_recall=test_recall,
+        train_precision=train_precision,
+        test_precision=test_precision,
+        train_f1=train_f1,
+        test_f1=test_f1,
+        train_confusion_matrix=train_confusion_matrix,
+        test_confusion_matrix=test_confusion_matrix
+    ),
+    
 
 def plot_history(history, ax=None):
     if ax is None:
@@ -367,17 +399,20 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     root.after(100, root.destroy)
 
 def main():
+    os.chdir("C:\\Users\Andrew McCormack\\OneDrive\\Artificial Intelligence - MSc\\Applications of Machine Learning\\Group Project\\CMT316CW2")
+    
     setup_gui()
-    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b4", "efficientnet_b5", "efficientnet_b6", "efficientnet_b7", "vit_b_16", "vit_b_32", "vit_l_16", "vit_l_32", "twolayerscnn"]
+    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3" 
+                     "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
     batch_sizes = [32,64,128]
     
     if MODEL_CHOICE:
         if MODEL_CHOICE == "resnet":
             models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
         elif MODEL_CHOICE == "efficientnet":
-            models_to_run = ["efficientnet_b4", "efficientnet_b5", "efficientnet_b6", "efficientnet_b7"]
+            models_to_run = [ "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4"]
         elif MODEL_CHOICE == "vit":
-            models_to_run = ["vit_b_16", "vit_b_32", "vit_l_16", "vit_l_32"]
+            models_to_run = ["vit_b_16", "vit_b_32"]
         elif MODEL_CHOICE == "twolayerscnn":
             models_to_run = ["twolayerscnn"]
             
@@ -430,6 +465,12 @@ def main():
         for batch_size in batch_sizes:
             print(model_name + "_" + str(batch_size))
             try:
+                # Conditional logic to skip combinations of model_name and batch_size that cause an out of memory exception to throw
+                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
+                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+                    print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
+                    continue
+                
                 name = model_name + "_" + str(batch_size)
                 path_history = op.join("Histories", name + ".pkl")
                 path_model = op.join("Histories", name + ".pth")
