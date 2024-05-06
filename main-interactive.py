@@ -399,8 +399,6 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     root.after(100, root.destroy)
 
 def main():
-    os.chdir("C:\\Users\Andrew McCormack\\OneDrive\\Artificial Intelligence - MSc\\Applications of Machine Learning\\Group Project\\CMT316CW2")
-    
     setup_gui()
     models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3" 
                      "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
