@@ -2,12 +2,12 @@ import xml.etree.ElementTree as ET
 import torch
 import torch.nn as nn
 import tkinter as tk
+import plotly.graph_objects as go
 import pickle
 import pandas as pd
 import os
 import os.path as op
 import numpy as np 
-import math
 from tqdm import tqdm
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 from torchvision.models import (
@@ -16,12 +16,11 @@ from torchvision.models import (
 )
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from tkinter import ttk
+from tkinter import Checkbutton, ttk
 from sklearn import metrics
 from scipy.io import loadmat
 from PIL import Image
 from pathlib import Path
-from matplotlib import pyplot as plt
 
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
@@ -321,47 +320,66 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
         test_confusion_matrix=test_confusion_matrix
     ),
     
-
-def plot_history(history, ax=None):
-    if ax is None:
-        ax = plt.gca()
-    train_iters_per_epoch = history['train_iters_per_epoch']
-    test_iters_per_epoch = history['test_iters_per_epoch']
-    train_losses = history['train_losses']
-    test_losses = history['test_losses']
-    train_accs = history['train_accs']
-    test_accs = history['test_accs']
-    # Dual axis
-    train_losses = np.array(train_losses)
-    # Exponential moving average
-    train_losses_smooth = np.zeros_like(train_losses)
-    train_losses_smooth[0] = train_losses[0]
-    for i in range(1, len(train_losses)):
-        train_losses_smooth[i] = 0.9 * train_losses_smooth[i-1] + 0.1 * train_losses[i]
-    test_losses = np.array(test_losses)
-    test_losses_smooth = np.zeros_like(test_losses)
-    test_losses_smooth[0] = test_losses[0]
-    for i in range(1, len(test_losses)):
-        test_losses_smooth[i] = 0.9 * test_losses_smooth[i-1] + 0.1 * test_losses[i]
-    ax2 = ax.twinx()
-    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses, label="Train Loss", color='tab:blue', alpha=0.5)
-    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses, label="Test Loss", color='tab:orange', alpha=0.5)
-    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses_smooth, color='tab:blue')
-    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses_smooth, color='tab:orange')
-    ax2.plot(np.arange(len(train_accs)), train_accs, label="Train Accuracy", color='tab:green')
-    ax2.plot(np.arange(len(test_accs)), test_accs, label="Test Accuracy", color='tab:red')
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax2.set_ylabel("Accuracy")
-    ax.legend(loc='upper left')
-    ax2.legend(loc='upper right')
-    ax.grid()
-    return ax
-
+def plot_metric_comparison(metrics_data, metric_name):
+    if (metric_name == "accs"):
+        display_name = "Accuracy"
+    else:
+        display_name = metric_name
+    
+    fig = go.Figure()
+    for model_data in metrics_data["train_" + metric_name]:
+        epochs = list(range(len(model_data['values'])))
+        fig.add_trace(go.Scatter(x=epochs, y=model_data['values'], mode='lines+markers', name=model_data['model'].split("\\")[-1] + " (Train)"))
+        
+    for model_data in metrics_data["test_" + metric_name]:
+        epochs = list(range(len(model_data['values'])))
+        fig.add_trace(go.Scatter(x=epochs, y=model_data['values'], mode='lines+markers', name=model_data['model'].split("\\")[-1] + " (Test)"))
+    
+    fig.update_layout(
+        title=f"{display_name.capitalize()} Comparison Across Models",
+        xaxis_title="Epoch",
+        yaxis_title= display_name.capitalize(),
+        legend_title="Model Names",
+        width=1280, 
+        height=720 
+    )
+    fig.show()
+    
+def load_and_structure_histories(histories_directory, models_to_run, batch_sizes):
+    all_histories = {}
+    
+    for model_name in models_to_run:
+        for batch_size in batch_sizes:
+            history_file = histories_directory + "\\" + f"{model_name}_{batch_size}.pkl"
+            
+            if (os.path.isfile(history_file)):
+                model_name = history_file.replace(".pkl", "")
+                with open(os.path.join(histories_directory, history_file), "rb") as f:
+                    history = pickle.load(f)
+                for key in history[0].keys():
+                    if key not in all_histories:
+                        all_histories[key] = []
+                    all_histories[key].append({'model': model_name, 'values': history[0][key]})
+                    
+    return all_histories
+    
 def setup_gui():
     root = tk.Tk()
     root.title = "Model Selection"
-    root.geometry("400x300")
+    root.geometry("600x400")
+    
+    # Create checkbox variables
+    global SHOW_LOSS_METRICS
+    global SHOW_ACCURACY_METRICS
+    global SHOW_PRECISION_METRICS
+    global SHOW_RECALL_METRICS
+    global SHOW_F1_METRICS
+    
+    SHOW_LOSS_METRICS = tk.BooleanVar(value=True)
+    SHOW_ACCURACY_METRICS = tk.BooleanVar(value=True)
+    SHOW_PRECISION_METRICS = tk.BooleanVar(value=True)
+    SHOW_RECALL_METRICS = tk.BooleanVar(value=True)
+    SHOW_F1_METRICS = tk.BooleanVar(value=True)
     
     # Labels
     model_label = tk.Label(root, text="Select the model(s) to evaluate")
@@ -373,16 +391,32 @@ def setup_gui():
     model_dropdown = ttk.Combobox(root, values=model_choices)
     batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
     
-    # Set default dropdown values
+    # Checkboxes
+    show_loss_metrics_checkbox = Checkbutton(root, text="Display Loss Metrics", variable=SHOW_LOSS_METRICS)
+    show_accuracy_metrics_checkbox = Checkbutton(root, text="Display Accuracy Metrics", variable=SHOW_ACCURACY_METRICS)
+    show_precision_metrics_checkbox = Checkbutton(root, text="Display Precision Metrics", variable=SHOW_PRECISION_METRICS)
+    show_recall_metrics_checkbox = Checkbutton(root, text="Display Recall Metrics", variable=SHOW_RECALL_METRICS)
+    show_f1_metrics_checkbox = Checkbutton(root, text="Display F1 Score Metrics", variable=SHOW_F1_METRICS)
+    
+    # Set default values
     model_dropdown.set(MODEL_CHOICE)
     batch_size_dropdown.set(BATCH_SIZE_CHOICE)
+    show_loss_metrics_checkbox.select()
+    show_accuracy_metrics_checkbox.select()
+    show_precision_metrics_checkbox.select()
+    show_recall_metrics_checkbox.select()
+    show_f1_metrics_checkbox.select()
 
     # Packing
     model_label.pack(anchor='center', padx=10, pady=5)
     model_dropdown.pack(anchor='center', padx=10, pady=5)
     batch_choices_label.pack(anchor='center', padx=10, pady=5)
     batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
-
+    show_loss_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
+    show_accuracy_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
+    show_precision_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
+    show_recall_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
+    show_f1_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
 
     submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, batch_size_dropdown, root))
     submit_button.pack(anchor='center', padx=10, pady=20)
@@ -395,8 +429,10 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     
     MODEL_CHOICE = model_dropdown.get()
     BATCH_SIZE_CHOICE = batch_size_dropdown.get()
+    
     # Postpone root destruction to after the main loop
     root.after(100, root.destroy)
+    
 
 def main():
     setup_gui()
@@ -463,17 +499,19 @@ def main():
         for batch_size in batch_sizes:
             print(model_name + "_" + str(batch_size))
             try:
-                # Conditional logic to skip combinations of model_name and batch_size that cause an out of memory exception to throw
-                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
-                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
-                    print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
-                    continue
-                
                 name = model_name + "_" + str(batch_size)
                 path_history = op.join("Histories", name + ".pkl")
                 path_model = op.join("Histories", name + ".pth")
+                
+                # Skip models that have already been built
                 if op.exists(path_history):
                     print("Model", name, "already trained, skipping")
+                    continue
+                
+                # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
+                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
+                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+                    print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
                     continue
                 model = build_model(model_name, categories).to(device)
                 history = train_model(model, device, train_dataset, test_dataset, batch_size=batch_size)
@@ -508,36 +546,33 @@ def main():
             model_name_list = model_name.split("_")
             model_name = "_".join(model_name_list[:-1])
             batch_size = int(model_name_list[-1])
-
+            print(type(history))
             data.append(dict(
                 model=model_name,
                 batch_size=batch_size,
-                train_acc_best="{:.4f}".format(max(history['train_accs'])),
-                test_acc_best="{:.4f}".format(max(history['test_accs'])),
+                train_acc_best="{:.4f}".format(max(history[0]['train_accs'])),
+                test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
             ))
 
-        result_df = pd.DataFrame(data)
-        print(result_df.to_markdown())
+        all_histories = load_and_structure_histories(str(base_directory) + "\\Histories", models_to_run, batch_sizes)
+        metrics = []
+        
+        if (SHOW_LOSS_METRICS.get()):
+            metrics.append("loss")
+        if (SHOW_ACCURACY_METRICS.get()):
+            metrics.append("accs")
+        if (SHOW_PRECISION_METRICS.get()):
+            metrics.append("precision")
+        if (SHOW_RECALL_METRICS.get()):
+            metrics.append("recall")
+        if (SHOW_F1_METRICS.get()):
+            metrics.append("f1")
+        
+        for metric in metrics:
+            if "test_" + metric in all_histories:
+                # Plot the training metric
+                plot_metric_comparison(all_histories, metric)
 
-        # Determine the grid size
-        num_histories = len(histories)
-        cols = 2  # You can adjust this number based on your display preferences
-        rows = math.ceil(num_histories / cols)
-
-        fig, axes = plt.subplots(rows, cols, figsize=(15, rows * 2.5))  # Adjust height dynamically
-        axes = axes.flatten()  # Flatten in case we have more than one row
-
-        for i, hist in enumerate(histories):
-            with open(hist, "rb") as f:
-                history = pickle.load(f)
-            name = op.basename(hist).replace(".pkl", "")
-            ax = axes[i]
-            plot_history(history, ax=ax)
-            ax.set_title(name)
-            
-
-        plt.tight_layout()
-        plt.show()
     else:
         print("No history files could be found for the selected model and batch size criteria")
     
