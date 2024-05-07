@@ -2,7 +2,6 @@ import xml.etree.ElementTree as ET
 import torch
 import torch.nn as nn
 import tkinter as tk
-import plotly.graph_objects as go
 import pickle
 import pandas as pd
 import os
@@ -11,16 +10,15 @@ import numpy as np
 from tqdm import tqdm
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 from torchvision.models import (
-    efficientnet_b0, efficientnet_b1, efficientnet_b2, efficientnet_b3,
+    efficientnet_b0, efficientnet_b1, efficientnet_b2, efficientnet_b3, efficientnet_b4,
     vit_b_16, vit_b_32, vit_l_16, vit_l_32, 
 )
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from tkinter import Checkbutton, ttk
+from tkinter import ttk
 from sklearn import metrics
 from scipy.io import loadmat
 from PIL import Image
-from pathlib import Path
 
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
@@ -115,7 +113,6 @@ class CustomDataset(Dataset):
         label = torch.tensor(label, dtype=torch.long)
         return image, label
 
-
 class TwoLayersCNN(nn.Module):
     def __init__(self, num_classes):
         super(TwoLayersCNN, self).__init__()
@@ -132,7 +129,6 @@ class TwoLayersCNN(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-
 
 def build_model(model_name, categories):
     if model_name == 'twolayerscnn':
@@ -188,6 +184,15 @@ def build_model(model_name, categories):
             nn.Dropout(p=dropoutrate),
             nn.Linear(infeatures, len(categories))
         )
+    elif model_name == 'efficientnet_b4':
+        model = efficientnet_b4(pretrained=True)
+        classifier = model.classifier
+        dropoutrate = classifier[0].p
+        infeatures = classifier[1].in_features
+        model.classifier = nn.Sequential(
+            nn.Dropout(p=dropoutrate),
+            nn.Linear(infeatures, len(categories))
+        )
     elif model_name == 'vit_b_16':
         model = vit_b_16(pretrained=True)
         model.heads.head = torch.nn.Linear(model.heads.head.in_features, len(categories))
@@ -205,8 +210,7 @@ def build_model(model_name, categories):
     
     return model
 
-
-def train_model(model, device, train_dataset, test_dataset, batch_size=32):
+def train_model(model, device, train_dataset, test_dataset, path_model, batch_size=32):
     """
     Train the model, this function will return a dictionary containing the training and testing loss and accuracy
     """
@@ -231,6 +235,7 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
     test_precision = []
     train_f1 = []
     test_f1 = []
+    max_accuracy = 0
 
     epoch = 1
     while True:
@@ -294,8 +299,14 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
         print("Test Precision: ", test_precision[-1])
         print("Train F1-Score: ", train_f1[-1])
         print("Test F1-Score: ", test_f1[-1])
-        print("Train Confusion Matrix: ", train_confusion_matrix[-1])
-        print("Test Confusion Matrix: ", test_confusion_matrix[-1])
+        #print("Train Confusion Matrix: ", train_confusion_matrix[-1])
+        #print("Test Confusion Matrix: ", test_confusion_matrix[-1])
+        
+        # Update max accuracy if the current accuracy is greater than its currently value, then dump the current model 
+        if (test_accs[-1] > max_accuracy):
+            max_accuracy = test_accs[-1]
+            torch.save(model, path_model)
+            print("Model", model.name, "trained and saved")
         
         scheduler.step(test_accs[-1])
         if optimizer.param_groups[0]['lr'] < 1e-6:
@@ -319,49 +330,6 @@ def train_model(model, device, train_dataset, test_dataset, batch_size=32):
         train_confusion_matrix=train_confusion_matrix,
         test_confusion_matrix=test_confusion_matrix
     ),
-    
-def plot_metric_comparison(metrics_data, metric_name):
-    if (metric_name == "accs"):
-        display_name = "Accuracy"
-    else:
-        display_name = metric_name
-    
-    fig = go.Figure()
-    for model_data in metrics_data["train_" + metric_name]:
-        epochs = list(range(len(model_data['values'])))
-        fig.add_trace(go.Scatter(x=epochs, y=model_data['values'], mode='lines+markers', name=model_data['model'].split("\\")[-1] + " (Train)"))
-        
-    for model_data in metrics_data["test_" + metric_name]:
-        epochs = list(range(len(model_data['values'])))
-        fig.add_trace(go.Scatter(x=epochs, y=model_data['values'], mode='lines+markers', name=model_data['model'].split("\\")[-1] + " (Test)"))
-    
-    fig.update_layout(
-        title=f"{display_name.capitalize()} Comparison Across Models",
-        xaxis_title="Epoch",
-        yaxis_title= display_name.capitalize(),
-        legend_title="Model Names",
-        width=1280, 
-        height=720 
-    )
-    fig.show()
-    
-def load_and_structure_histories(histories_directory, models_to_run, batch_sizes):
-    all_histories = {}
-    
-    for model_name in models_to_run:
-        for batch_size in batch_sizes:
-            history_file = histories_directory + "\\" + f"{model_name}_{batch_size}.pkl"
-            
-            if (os.path.isfile(history_file)):
-                model_name = history_file.replace(".pkl", "")
-                with open(os.path.join(histories_directory, history_file), "rb") as f:
-                    history = pickle.load(f)
-                for key in history[0].keys():
-                    if key not in all_histories:
-                        all_histories[key] = []
-                    all_histories[key].append({'model': model_name, 'values': history[0][key]})
-                    
-    return all_histories
     
 def setup_gui():
     root = tk.Tk()
@@ -391,32 +359,15 @@ def setup_gui():
     model_dropdown = ttk.Combobox(root, values=model_choices)
     batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
     
-    # Checkboxes
-    show_loss_metrics_checkbox = Checkbutton(root, text="Display Loss Metrics", variable=SHOW_LOSS_METRICS)
-    show_accuracy_metrics_checkbox = Checkbutton(root, text="Display Accuracy Metrics", variable=SHOW_ACCURACY_METRICS)
-    show_precision_metrics_checkbox = Checkbutton(root, text="Display Precision Metrics", variable=SHOW_PRECISION_METRICS)
-    show_recall_metrics_checkbox = Checkbutton(root, text="Display Recall Metrics", variable=SHOW_RECALL_METRICS)
-    show_f1_metrics_checkbox = Checkbutton(root, text="Display F1 Score Metrics", variable=SHOW_F1_METRICS)
-    
     # Set default values
     model_dropdown.set(MODEL_CHOICE)
     batch_size_dropdown.set(BATCH_SIZE_CHOICE)
-    show_loss_metrics_checkbox.select()
-    show_accuracy_metrics_checkbox.select()
-    show_precision_metrics_checkbox.select()
-    show_recall_metrics_checkbox.select()
-    show_f1_metrics_checkbox.select()
 
     # Packing
     model_label.pack(anchor='center', padx=10, pady=5)
     model_dropdown.pack(anchor='center', padx=10, pady=5)
     batch_choices_label.pack(anchor='center', padx=10, pady=5)
     batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
-    show_loss_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
-    show_accuracy_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
-    show_precision_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
-    show_recall_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
-    show_f1_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
 
     submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, batch_size_dropdown, root))
     submit_button.pack(anchor='center', padx=10, pady=20)
@@ -495,86 +446,36 @@ def main():
     train_dataset = CustomDataset(dftrain, transform=train_transforms)
     test_dataset = CustomDataset(dftest, transform=test_transforms)
 
-    for model_name in models_to_run:
-        for batch_size in batch_sizes:
-            print(model_name + "_" + str(batch_size))
-            try:
-                name = model_name + "_" + str(batch_size)
-                path_history = op.join("Histories", name + ".pkl")
-                path_model = op.join("Histories", name + ".pth")
-                
-                # Skip models that have already been built
-                if op.exists(path_history):
-                    print("Model", name, "already trained, skipping")
-                    continue
-                
-                # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
-                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
-                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
-                    print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
-                    continue
-                model = build_model(model_name, categories).to(device)
-                history = train_model(model, device, train_dataset, test_dataset, batch_size=batch_size)
-                with open(path_history, "wb") as f:
-                    pickle.dump(history, f)
-                torch.save(model.state_dict(), path_model)
-                print("Model", name, "trained and saved")
-            # OOM
-            except RuntimeError as e:
-                print(str(e))
-                print("Model", name, "OOM, skipping")
-            except Exception as e:
-                print(str(e))
-                print("Model", name, "Error", e)
-                continue
-
-    histories = []
-    base_directory = Path(os.path.dirname(os.path.realpath(__file__)))
-    for model_name in models_to_run:
-        for batch_size in batch_sizes:
-            history_file = base_directory / "Histories" / f"{model_name}_{batch_size}.pkl"
+    model_name = "efficientnet_b4"
+    for batch_size in batch_sizes:
+        print(model_name + "_" + str(batch_size))
+        try:
+            name = model_name + "_" + str(batch_size)
+            path_history = op.join("Histories", name + ".pkl")
+            path_model = op.join("Histories", name + ".pth")
             
-            if (history_file.is_file()):
-                histories.append(history_file)
-    
-    if (len(histories) > 0):
-        data = []
-        for hist in histories:
-            with open(hist, "rb") as f:
-                history = pickle.load(f)
-            model_name = op.basename(hist).replace(".pkl", "")
-            model_name_list = model_name.split("_")
-            model_name = "_".join(model_name_list[:-1])
-            batch_size = int(model_name_list[-1])
-            print(type(history))
-            data.append(dict(
-                model=model_name,
-                batch_size=batch_size,
-                train_acc_best="{:.4f}".format(max(history[0]['train_accs'])),
-                test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
-            ))
-
-        all_histories = load_and_structure_histories(str(base_directory) + "\\Histories", models_to_run, batch_sizes)
-        metrics = []
-        
-        if (SHOW_LOSS_METRICS.get()):
-            metrics.append("loss")
-        if (SHOW_ACCURACY_METRICS.get()):
-            metrics.append("accs")
-        if (SHOW_PRECISION_METRICS.get()):
-            metrics.append("precision")
-        if (SHOW_RECALL_METRICS.get()):
-            metrics.append("recall")
-        if (SHOW_F1_METRICS.get()):
-            metrics.append("f1")
-        
-        for metric in metrics:
-            if "test_" + metric in all_histories:
-                # Plot the training metric
-                plot_metric_comparison(all_histories, metric)
-
-    else:
-        print("No history files could be found for the selected model and batch size criteria")
+            # Skip models that have already been built
+            if op.exists(path_history):
+                print("Model", name, "already trained, skipping")
+                continue
+            
+            # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
+            if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
+                (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+                print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
+                continue
+            model = build_model(model_name, categories).to(device)
+            history = train_model(model, device, train_dataset, test_dataset, path_model, batch_size=batch_size)
+            with open(path_history, "wb") as f:
+                pickle.dump(history, f)
+        # OOM
+        except RuntimeError as e:
+            print(str(e))
+            print("Model", name, "OOM, skipping")
+        except Exception as e:
+            print(str(e))
+            print("Model", name, "Error", e)
+            continue
     
 if __name__ == '__main__':
     main()
