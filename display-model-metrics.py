@@ -327,12 +327,12 @@ def main():
     print("Number of testing samples: ", len(dftest))
     
     if (DOWNLOAD_PRE_BUILT_MODELS):
-        download_pre_built_models(os.path.join(BASE_DIRECTORY, "HistoriesOriginal"), models_to_run, batch_sizes)
+        download_pre_built_models(os.path.join(BASE_DIRECTORY, "Histories"), models_to_run, batch_sizes)
     
     histories = []
     for model_name in models_to_run:
         for batch_size in batch_sizes:
-            history_file = os.path.join(BASE_DIRECTORY, "HistoriesOriginal", f"{model_name}_{batch_size}.pkl")
+            history_file = os.path.join(BASE_DIRECTORY, "Histories", f"{model_name}_{batch_size}.pkl")
             
             if (os.path.isfile(history_file)):
                 histories.append(history_file)
@@ -353,7 +353,7 @@ def main():
                 test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
             ))
             
-        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "HistoriesOriginal"), models_to_run, batch_sizes)
+        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "Histories"), models_to_run, batch_sizes)
         metrics = []
         
         if (SHOW_ACCURACY_METRICS.get()):
