@@ -11,7 +11,6 @@ from flask import Flask, request, jsonify
 from PIL import Image
 import io
 
-os.chdir("C:\\Users\\Andrew McCormack\\OneDrive\\Artificial Intelligence - MSc\\Applications of Machine Learning\\Group Project\\CMT316CW2")
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 # Use efficientnet_b4_32 by default as this is the best performing model

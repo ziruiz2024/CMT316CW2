@@ -20,7 +20,7 @@ def browse_image_folder(frame):
 
 def display_images(frame, image_paths):
     num_images = len(image_paths)
-    num_columns = 5
+    num_columns = 4
     num_rows = (num_images + num_columns - 1) // num_columns
 
     # Clear existing images and labels
@@ -59,7 +59,7 @@ def display_images(frame, image_paths):
 def setup_gui():
     root = tk.Tk()
     root.title("Image Loader")
-    root.geometry("1280x720")
+    root.geometry("900x600")
     
     canvas = Canvas(root)
     scrollbar = Scrollbar(root, orient="vertical", command=canvas.yview)
@@ -81,12 +81,11 @@ def setup_gui():
     
     # Create a button that when clicked will open the file dialog
     browse_images_button = tk.Button(root, text="Browse for Images", command=lambda: browse_image_folder(frame))
-    
+    browse_images_button.pack(anchor='center', padx=10, pady=5)
     # Packing
     picture_label.pack(anchor='center', padx=10, pady=5)
-    browse_images_button.pack(anchor='center', padx=10, pady=5)
     
-    canvas.pack(expand=True, fill='both')
+    canvas.pack(side='left', expand=True, fill='both')
     scrollbar.pack(side="right", fill="y")
 
     # Keep the main loop running until explicitly destroyed

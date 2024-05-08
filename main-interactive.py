@@ -22,15 +22,16 @@ from PIL import Image
 
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
+BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 def load_dataset():
     # Get train list
-    f = loadmat("lists/train_list.mat")
+    f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
     train_labels = [x[0] for x in f['labels']]
 
     # Get file list
-    f = loadmat("lists/test_list.mat")
+    f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "test_list.mat"))
     test_images = [x[0][0] for x in f['file_list']]
     test_labels = [x[0] for x in f['labels']]
 

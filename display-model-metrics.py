@@ -14,15 +14,16 @@ from pathlib import Path
 
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
+BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 def load_dataset():
     # Get train list
-    f = loadmat("lists/train_list.mat")
+    f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
     train_labels = [x[0] for x in f['labels']]
 
     # Get file list
-    f = loadmat("lists/test_list.mat")
+    f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "test_list.mat"))
     test_images = [x[0][0] for x in f['file_list']]
     test_labels = [x[0] for x in f['labels']]
 
@@ -146,7 +147,7 @@ def load_and_structure_histories(histories_directory, models_to_run, batch_sizes
     
     for model_name in models_to_run:
         for batch_size in batch_sizes:
-            history_file = histories_directory + "\\" + f"{model_name}_{batch_size}.pkl"
+            history_file = os.path.join(histories_directory, f"{model_name}_{batch_size}.pkl")
             
             if (os.path.isfile(history_file)):
                 model_name = history_file.replace(".pkl", "")
@@ -260,12 +261,11 @@ def main():
     #print("Number of testing samples: ", len(dftest))
 
     histories = []
-    base_directory = Path(os.path.dirname(os.path.realpath(__file__)))
     for model_name in models_to_run:
         for batch_size in batch_sizes:
-            history_file = base_directory / "Histories" / f"{model_name}_{batch_size}.pkl"
+            history_file = os.path.join(BASE_DIRECTORY, "Histories", f"{model_name}_{batch_size}.pkl")
             
-            if (history_file.is_file()):
+            if (os.path.isfile(history_file)):
                 histories.append(history_file)
     
     if (len(histories) > 0):
@@ -277,15 +277,14 @@ def main():
             model_name_list = model_name.split("_")
             model_name = "_".join(model_name_list[:-1])
             batch_size = int(model_name_list[-1])
-            print(type(history))
             data.append(dict(
                 model=model_name,
                 batch_size=batch_size,
                 train_acc_best="{:.4f}".format(max(history[0]['train_accs'])),
                 test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
             ))
-
-        all_histories = load_and_structure_histories(str(base_directory) + "\\Histories", models_to_run, batch_sizes)
+            
+        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "Histories"), models_to_run, batch_sizes)
         metrics = []
         
         if (SHOW_ACCURACY_METRICS.get()):
