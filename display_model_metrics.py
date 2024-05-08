@@ -1,3 +1,28 @@
+"""
+Image Classification Model Training and Evaluation Tool
+
+This script offers functionality for observing, downloading, and evaluating various machine learning models specialized for image classification tasks. 
+
+Key Features:
+- Load image datasets with XML annotations.
+- Define and utilize custom dataset classes for handling image transformations.
+- Plot training and validation metrics using Plotly for visual comparison.
+- Download pretrained model states from remote repositories.
+- GUI for selecting models and configurations for training or evaluation.
+
+Dependencies:
+- xml.etree.ElementTree: For XML parsing.
+- torch: For constructing and training neural network models.
+- tkinter: For creating the GUI.
+- requests, gdown: For downloading files.
+- plotly: For plotting training/validation metrics.
+- pandas: For data manipulation.
+- os, json, pickle: For file and data handling.
+- PIL: For image manipulation.
+
+Usage:
+    Run the script directly from the command line to launch the GUI and start model training or evaluation processes based on user inputs.
+"""
 import xml.etree.ElementTree as ET
 import torch
 import tkinter as tk
@@ -15,11 +40,18 @@ from tkinter import Checkbutton, ttk
 from scipy.io import loadmat
 from PIL import Image
 
+# Declare global variables
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 def load_dataset():
+    """
+    Loads and processes image data from .mat files and XML annotations to prepare training and testing datasets.
+
+    Returns:
+        tuple: A tuple containing lists of dictionaries for training and testing data, and a dictionary of category IDs.
+    """
     # Get train list
     f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
@@ -91,14 +123,44 @@ def load_dataset():
 
 # Inherit from Dataset
 class CustomDataset(Dataset):
+    """
+    A PyTorch dataset class for handling image datasets with customizable transformations.
+
+    Attributes:
+        df (DataFrame): DataFrame containing the paths to images and their corresponding labels.
+        transform (callable, optional): Optional transform to be applied on a PIL image.
+    """
+    
     def __init__(self, df, transform=None):
+        """
+        Initializes the dataset with a DataFrame and an optional transform.
+
+        Parameters:
+            df (DataFrame): DataFrame containing image paths and labels.
+            transform (callable, optional): Transform to apply to each image.
+        """
         self.df = df
         self.transform = transform
 
     def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        
+        Returns:
+            int: The total number of images.
+        """
         return len(self.df)
     
     def __getitem__(self, idx):
+        """
+        Retrieves an image and its label from the dataset at a specified index.
+        
+        Parameters:
+            idx (int): Index of the item.
+        
+        Returns:
+            tuple: Tuple containing the transformed image and its label as a tensor.
+        """
         row = self.df.iloc[idx]
         image = Image.open(row['image'])
         image = image.convert('RGB')
@@ -110,6 +172,15 @@ class CustomDataset(Dataset):
         return image, label
 
 def get_metric_max_values(metric_data):
+    """
+    Calculates the maximum values of specified metrics from given data.
+
+    Parameters:
+        metric_data (list): List of dictionaries containing model metrics data.
+    
+    Returns:
+        list: List of tuples containing the maximum values and corresponding model names.
+    """
     max_values = []
     
     # Collect all maximum values to determine the global maximum
@@ -120,6 +191,13 @@ def get_metric_max_values(metric_data):
     return max_values
     
 def plot_metric_comparison(metrics_data, metric_name):
+    """
+    Plots comparison graphs for specified metrics across different models using Plotly.
+
+    Parameters:
+        metrics_data (dict): Dictionary containing training and testing metrics data.
+        metric_name (str): The name of the metric to plot.
+    """
     if (metric_name == "accs"):
         display_name = "Accuracy"
     else:
@@ -146,6 +224,17 @@ def plot_metric_comparison(metrics_data, metric_name):
     fig.show()
     
 def load_and_structure_histories(histories_directory, models_to_run, batch_sizes):
+    """
+    Loads and structures training histories from specified files into a usable format.
+
+    Parameters:
+        histories_directory (str): Directory where history files are stored.
+        models_to_run (list): List of model names to load histories for.
+        batch_sizes (list): List of batch sizes for which histories need to be loaded.
+    
+    Returns:
+        dict: Dictionary containing structured training histories.
+    """
     all_histories = {}
     
     for model_name in models_to_run:
@@ -164,6 +253,14 @@ def load_and_structure_histories(histories_directory, models_to_run, batch_sizes
     return all_histories
 
 def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
+    """
+    Downloads pre-built model states from specified URLs if they do not already exist locally.
+
+    Parameters:
+        histories_directory (str): Directory to save the downloaded model states.
+        models_to_run (list): List of model names for which to download states.
+        batch_sizes (list): List of batch sizes corresponding to the model states.
+    """
     pre_built_model_links = json.loads(json.dumps({"efficientnet_b0_32.pkl":"https://drive.google.com/uc?export=download&id=11eDWSD72mpWP6XgkQ0SY4QVG4Rx59y9V",
                                                     "efficientnet_b0_64.pkl":"https://drive.google.com/uc?export=download&id=14q_-Sj2rTohsI4RTA3cPkzimzBJJk9TO",
                                                     "efficientnet_b1_32.pkl":"https://drive.google.com/uc?export=download&id=1frEXIHsG7kTfhu-hsY93gnwYdD09-03C",
@@ -200,6 +297,9 @@ def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
     
     
 def setup_gui():
+    """
+    Sets up a graphical user interface for selecting models and batch sizes for training or evaluation.
+    """
     root = tk.Tk()
     root.title = "Model Selection"
     root.geometry("600x400")
@@ -261,6 +361,14 @@ def setup_gui():
     root.mainloop()
 
 def on_submit_click(model_dropdown, batch_size_dropdown, root):
+    """
+    Handles the event when the submit button is clicked in the GUI. Updates global settings based on user selection.
+
+    Parameters:
+        model_dropdown (ttk.Combobox): Dropdown menu for selecting the model.
+        batch_size_dropdown (ttk.Combobox): Dropdown menu for selecting the batch size.
+        root (tk.Tk): Root window of the GUI.
+    """
     global MODEL_CHOICE, BATCH_SIZE_CHOICE
     
     MODEL_CHOICE = model_dropdown.get()
@@ -271,6 +379,9 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     
 
 def main():
+    """
+    Main function to run the setup GUI and perform subsequent model training or evaluation based on the GUI inputs.
+    """
     setup_gui()
     models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3" 
                      "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
