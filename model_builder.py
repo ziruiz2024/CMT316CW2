@@ -30,6 +30,8 @@ import pandas as pd
 import os
 import os.path as op
 import numpy as np 
+import math
+import glob
 from tqdm import tqdm
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 from torchvision.models import (
@@ -38,10 +40,11 @@ from torchvision.models import (
 )
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from tkinter import ttk
+from tkinter import ttk, Checkbutton
 from sklearn import metrics
 from scipy.io import loadmat
 from PIL import Image
+from matplotlib import pyplot as plt
 
 # Declare global variables
 MODEL_CHOICE = "All"
@@ -97,7 +100,7 @@ def load_dataset():
         label_name = os.path.split(image)[0]
         # Label -1 to make it 0-indexed
         categories[label_name] = label-1
-        annotation_path = os.path.join("Annotation", image.replace(".jpg", ""))
+        annotation_path = os.path.join(BASE_DIRECTORY, "Annotation", image.replace(".jpg", ""))
 
         # Read XML
         tree = ET.parse(annotation_path)
@@ -468,6 +471,42 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
         test_confusion_matrix=test_confusion_matrix
     ),
     
+def plot_history(history, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    train_iters_per_epoch = history['train_iters_per_epoch']
+    test_iters_per_epoch = history['test_iters_per_epoch']
+    train_losses = history['train_losses']
+    test_losses = history['test_losses']
+    train_accs = history['train_accs']
+    test_accs = history['test_accs']
+    # Dual axis
+    train_losses = np.array(train_losses)
+    # Exponential moving average
+    train_losses_smooth = np.zeros_like(train_losses)
+    train_losses_smooth[0] = train_losses[0]
+    for i in range(1, len(train_losses)):
+        train_losses_smooth[i] = 0.9 * train_losses_smooth[i-1] + 0.1 * train_losses[i]
+    test_losses = np.array(test_losses)
+    test_losses_smooth = np.zeros_like(test_losses)
+    test_losses_smooth[0] = test_losses[0]
+    for i in range(1, len(test_losses)):
+        test_losses_smooth[i] = 0.9 * test_losses_smooth[i-1] + 0.1 * test_losses[i]
+    ax2 = ax.twinx()
+    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses, label="Train Loss", color='tab:blue', alpha=0.5)
+    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses, label="Test Loss", color='tab:orange', alpha=0.5)
+    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses_smooth, color='tab:blue')
+    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses_smooth, color='tab:orange')
+    ax2.plot(np.arange(len(train_accs)), train_accs, label="Train Accuracy", color='tab:green')
+    ax2.plot(np.arange(len(test_accs)), test_accs, label="Test Accuracy", color='tab:red')
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax2.set_ylabel("Accuracy")
+    ax.legend(loc='upper left')
+    ax2.legend(loc='upper right')
+    ax.grid()
+    return ax
+    
 def setup_gui():
     """
     Sets up a graphical user interface for selecting models and batch sizes for evaluation.
@@ -481,45 +520,46 @@ def setup_gui():
     root.geometry("400x300")
     
     # Create checkbox variables
-    global SHOW_LOSS_METRICS
-    global SHOW_ACCURACY_METRICS
-    global SHOW_PRECISION_METRICS
-    global SHOW_RECALL_METRICS
-    global SHOW_F1_METRICS
+    global CREATE_BATCH_32_MODELS
+    global CREATE_BATCH_64_MODELS
+    global CREATE_BATCH_128_MODELS
     
-    SHOW_LOSS_METRICS = tk.BooleanVar(value=True)
-    SHOW_ACCURACY_METRICS = tk.BooleanVar(value=True)
-    SHOW_PRECISION_METRICS = tk.BooleanVar(value=True)
-    SHOW_RECALL_METRICS = tk.BooleanVar(value=True)
-    SHOW_F1_METRICS = tk.BooleanVar(value=True)
+    CREATE_BATCH_32_MODELS = tk.BooleanVar(value=True)
+    CREATE_BATCH_64_MODELS = tk.BooleanVar(value=True)
+    CREATE_BATCH_128_MODELS = tk.BooleanVar(value=True)
     
     # Labels
     model_label = tk.Label(root, text="Select the model(s) to evaluate")
-    batch_choices_label = tk.Label(root, text="Select the batch size(s) to include in model evaluation")
 
     # Dropdowns
     model_choices = ["resnet", "efficientnet", "vit", "twolayerscnn", "All"]
-    batch_choices = ["32", "32,64", "32,64,128"]
     model_dropdown = ttk.Combobox(root, values=model_choices)
-    batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
+    
+    # Checkboxes
+    create_batch_32_models = Checkbutton(root, text="Create Batch 32 Models", variable=CREATE_BATCH_32_MODELS)
+    create_batch_64_models = Checkbutton(root, text="Create Batch 64 Models", variable=CREATE_BATCH_64_MODELS)
+    create_batch_128_models = Checkbutton(root, text="Create Batch 128 Models", variable=CREATE_BATCH_128_MODELS)
     
     # Set default values
     model_dropdown.set(MODEL_CHOICE)
-    batch_size_dropdown.set(BATCH_SIZE_CHOICE)
+    create_batch_32_models.select()
+    create_batch_64_models.select()
+    create_batch_128_models.select()
 
     # Packing
     model_label.pack(anchor='center', padx=10, pady=5)
     model_dropdown.pack(anchor='center', padx=10, pady=5)
-    batch_choices_label.pack(anchor='center', padx=10, pady=5)
-    batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
+    create_batch_32_models.pack(anchor='center', padx=10, pady=5)
+    create_batch_64_models.pack(anchor='center', padx=10, pady=5)
+    create_batch_128_models.pack(anchor='center', padx=10, pady=5)
 
-    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, batch_size_dropdown, root))
+    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, root))
     submit_button.pack(anchor='center', padx=10, pady=20)
 
     # Keep the main loop running until explicitly destroyed
     root.mainloop()
 
-def on_submit_click(model_dropdown, batch_size_dropdown, root):
+def on_submit_click(model_dropdown, root):
     """
     Handles the event triggered by clicking the submit button in the GUI. This function retrieves the selected model and batch size
     from the dropdowns, updates global variables accordingly, and destroys the GUI root after a slight delay.
@@ -533,7 +573,6 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     global MODEL_CHOICE, BATCH_SIZE_CHOICE
     
     MODEL_CHOICE = model_dropdown.get()
-    BATCH_SIZE_CHOICE = batch_size_dropdown.get()
     
     # Postpone root destruction to after the main loop
     root.after(100, root.destroy)
@@ -568,7 +607,7 @@ def main():
     
     setup_gui()
     models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b3", "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
-    batch_sizes = [32,64,128]
+    batch_sizes = []
     
     if MODEL_CHOICE:
         if MODEL_CHOICE == "resnet":
@@ -580,13 +619,12 @@ def main():
         elif MODEL_CHOICE == "twolayerscnn":
             models_to_run = ["twolayerscnn"]
             
-    if BATCH_SIZE_CHOICE:
-        if BATCH_SIZE_CHOICE == "32":
-            batch_sizes = [32]
-        elif BATCH_SIZE_CHOICE == "32,64":
-            batch_sizes = [32,64]
-        elif BATCH_SIZE_CHOICE == "32,64,128":
-            batch_sizes = [32,64,128]
+    if (CREATE_BATCH_32_MODELS.get()):
+        batch_sizes.append(32)
+    if (CREATE_BATCH_64_MODELS.get()):
+        batch_sizes.append(64)
+    if (CREATE_BATCH_128_MODELS.get()):
+        batch_sizes.append(128)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -654,6 +692,48 @@ def main():
                 print(str(e))
                 print("Model", name, "Error", e)
                 continue
+
+    histories = []
+    for model_name in models_to_run:
+        for batch_size in batch_sizes:
+            history_file = os.path.join(BASE_DIRECTORY, "Histories", f"{model_name}_{batch_size}.pkl")
+            
+            if (os.path.isfile(history_file)):
+                histories.append(history_file)
+
+    data = []
+    for hist in histories:
+        with open(hist, "rb") as f:
+            history = pickle.load(f)
+        model_name = op.basename(hist).replace(".pkl", "")
+        model_name_list = model_name.split("_")
+        model_name = "_".join(model_name_list[:-1])
+        batch_size = int(model_name_list[-1])
+
+        data.append(dict(
+            model=model_name,
+            batch_size=batch_size,
+            train_acc_best="{:.4f}".format(max(history[0]['train_accs'])),
+            test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
+        ))
+
+    result_df = pd.DataFrame(data)
+    print(result_df.to_markdown())
+
+    _, axes = plt.subplots(math.ceil(len(histories) / 4), 4, figsize=(15, 15))
+    axes = axes.flatten()
+
+    for i, hist in enumerate(histories):
+        with open(hist, "rb") as f:
+            history = pickle.load(f)
+        name = op.basename(hist).replace(".pkl", "")
+        ax = axes[i]
+        plot_history(history[0], ax=ax)
+        ax.set_title(name)
+        
+
+    plt.tight_layout()
+    plt.show()
         
 if __name__ == '__main__':
     main()
