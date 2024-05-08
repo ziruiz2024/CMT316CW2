@@ -71,6 +71,7 @@ def load_dataset():
             - List of dictionaries for testing data
             - Dictionary mapping label names to zero-indexed label IDs
     """
+    
     # Get train list
     f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
@@ -158,6 +159,7 @@ class CustomDataset(Dataset):
             df (DataFrame): The DataFrame containing the image paths and labels.
             transform (callable, optional): The transform to be applied to each image.
         """
+        
         self.df = df
         self.transform = transform
 
@@ -168,6 +170,7 @@ class CustomDataset(Dataset):
         Returns:
             int: The total number of images.
         """
+        
         return len(self.df)
     
     def __getitem__(self, idx):
@@ -180,6 +183,7 @@ class CustomDataset(Dataset):
         Returns:
             tuple: A tuple containing the transformed image and its label as a tensor.
         """
+        
         row = self.df.iloc[idx]
         image = Image.open(row['image'])
         image = image.convert('RGB')
@@ -209,6 +213,7 @@ class TwoLayersCNN(nn.Module):
         Parameters:
             num_classes (int): The number of classes in the classification task.
         """
+        
         super(TwoLayersCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
@@ -226,6 +231,7 @@ class TwoLayersCNN(nn.Module):
         Returns:
             Tensor: The output tensor containing the logits of the network for each class.
         """
+        
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = x.view(-1, 128 * 56 * 56)
@@ -248,6 +254,7 @@ def build_model(model_name, categories):
     Raises:
         ValueError: If the model_name is not supported.
     """
+    
     if model_name == 'twolayerscnn':
         model = TwoLayersCNN(len(categories))
     elif model_name == 'resnet18':
@@ -343,6 +350,7 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
         dict: A dictionary containing metrics such as training and testing loss and accuracy, precision, recall, F1 score,
         and confusion matrices across epochs.
     """
+    
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
@@ -467,6 +475,7 @@ def setup_gui():
     This function initializes a window with drop-down menus to select a specific model architecture or a batch size for training,
     and a submit button to finalize the selection.
     """
+    
     root = tk.Tk()
     root.title = "Model Selection"
     root.geometry("400x300")
@@ -520,6 +529,7 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
         batch_size_dropdown (ttk.Combobox): Dropdown menu containing the batch size options.
         root (tk.Tk): The root window of the GUI.
     """
+    
     global MODEL_CHOICE, BATCH_SIZE_CHOICE
     
     MODEL_CHOICE = model_dropdown.get()
@@ -539,6 +549,7 @@ def model_oom_safety_check(model_name, batch_size):
     Returns:
         bool: True if the combination is known to be unsafe and may cause OOM errors, False otherwise.
     """
+    
     is_model_oom_unsafe = False
     
     # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
@@ -554,6 +565,7 @@ def main():
     manages dataset loading and model training based on user inputs. Also includes safety checks for OOM and saves models
     and their histories based on training performance.
     """
+    
     setup_gui()
     models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b3", "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
     batch_sizes = [32,64,128]

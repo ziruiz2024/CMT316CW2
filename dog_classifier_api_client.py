@@ -28,6 +28,7 @@ import os
 from tkinter import filedialog, Canvas, Scrollbar, Frame
 from PIL import Image, ImageTk
 
+# Declare global variables
 URL = "http://127.0.0.1:5000/predict"
 
 def browse_image_folder(frame):

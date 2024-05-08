@@ -19,6 +19,7 @@ Dependencies:
 - pandas: For data manipulation.
 - os, json, pickle: For file and data handling.
 - PIL: For image manipulation.
+- gdown, requests: For downloading files from the google drive.
 
 Usage:
     Run the script directly from the command line to launch the GUI and start model training or evaluation processes based on user inputs.
@@ -34,7 +35,6 @@ import os
 import os.path as op
 import json
 import gdown
-from tqdm import tqdm
 from torch.utils.data import Dataset
 from tkinter import Checkbutton, ttk
 from scipy.io import loadmat
@@ -42,7 +42,6 @@ from PIL import Image
 
 # Declare global variables
 MODEL_CHOICE = "All"
-BATCH_SIZE_CHOICE = "32,64,128"
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 def load_dataset():
@@ -52,6 +51,7 @@ def load_dataset():
     Returns:
         tuple: A tuple containing lists of dictionaries for training and testing data, and a dictionary of category IDs.
     """
+    
     # Get train list
     f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
@@ -77,7 +77,7 @@ def load_dataset():
         label_name = os.path.split(image)[0]
         # Label -1 to make it 0-indexed
         categories[label_name] = label-1
-        annotation_path = os.path.join("Annotation", image.replace(".jpg", ""))
+        annotation_path = os.path.join(BASE_DIRECTORY, "Annotation", image.replace(".jpg", ""))
 
         # Read XML
         tree = ET.parse(annotation_path)
@@ -181,6 +181,7 @@ def get_metric_max_values(metric_data):
     Returns:
         list: List of tuples containing the maximum values and corresponding model names.
     """
+    
     max_values = []
     
     # Collect all maximum values to determine the global maximum
@@ -198,6 +199,7 @@ def plot_metric_comparison(metrics_data, metric_name):
         metrics_data (dict): Dictionary containing training and testing metrics data.
         metric_name (str): The name of the metric to plot.
     """
+    
     if (metric_name == "accs"):
         display_name = "Accuracy"
     else:
@@ -223,7 +225,7 @@ def plot_metric_comparison(metrics_data, metric_name):
     )
     fig.show()
     
-def load_and_structure_histories(histories_directory, models_to_run, batch_sizes):
+def load_and_structure_histories(histories):
     """
     Loads and structures training histories from specified files into a usable format.
 
@@ -235,20 +237,20 @@ def load_and_structure_histories(histories_directory, models_to_run, batch_sizes
     Returns:
         dict: Dictionary containing structured training histories.
     """
+    
     all_histories = {}
     
-    for model_name in models_to_run:
-        for batch_size in batch_sizes:
-            history_file = os.path.join(histories_directory, f"{model_name}_{batch_size}.pkl")
-            
-            if (os.path.isfile(history_file)):
-                model_name = history_file.replace(".pkl", "")
-                with open(os.path.join(histories_directory, history_file), "rb") as f:
+    for history in histories:
+            if (os.path.isfile(history)):
+                model_name = history.replace(".pkl", "")
+                with open(history, "rb") as f:
                     history = pickle.load(f)
                 for key in history[0].keys():
                     if key not in all_histories:
                         all_histories[key] = []
                     all_histories[key].append({'model': model_name, 'values': history[0][key]})
+            else:
+                print(f"{history} not found")
                     
     return all_histories
 
@@ -261,6 +263,7 @@ def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
         models_to_run (list): List of model names for which to download states.
         batch_sizes (list): List of batch sizes corresponding to the model states.
     """
+    
     pre_built_model_links = json.loads(json.dumps({"efficientnet_b0_32.pkl":"https://drive.google.com/uc?export=download&id=11eDWSD72mpWP6XgkQ0SY4QVG4Rx59y9V",
                                                     "efficientnet_b0_64.pkl":"https://drive.google.com/uc?export=download&id=14q_-Sj2rTohsI4RTA3cPkzimzBJJk9TO",
                                                     "efficientnet_b1_32.pkl":"https://drive.google.com/uc?export=download&id=1frEXIHsG7kTfhu-hsY93gnwYdD09-03C",
@@ -300,18 +303,25 @@ def setup_gui():
     """
     Sets up a graphical user interface for selecting models and batch sizes for training or evaluation.
     """
+    
     root = tk.Tk()
     root.title = "Model Selection"
-    root.geometry("600x400")
+    root.geometry("600x500")
     
     # Create checkbox variables
     global DOWNLOAD_PRE_BUILT_MODELS
+    global SHOW_BATCH_32_MODELS
+    global SHOW_BATCH_64_MODELS
+    global SHOW_BATCH_128_MODELS
     global SHOW_ACCURACY_METRICS
     global SHOW_PRECISION_METRICS
     global SHOW_RECALL_METRICS
     global SHOW_F1_METRICS
     
     DOWNLOAD_PRE_BUILT_MODELS = tk.BooleanVar(value=True)
+    SHOW_BATCH_32_MODELS = tk.BooleanVar(value=True)
+    SHOW_BATCH_64_MODELS = tk.BooleanVar(value=True)
+    SHOW_BATCH_128_MODELS = tk.BooleanVar(value=True)
     SHOW_ACCURACY_METRICS = tk.BooleanVar(value=True)
     SHOW_PRECISION_METRICS = tk.BooleanVar(value=True)
     SHOW_RECALL_METRICS = tk.BooleanVar(value=True)
@@ -323,12 +333,13 @@ def setup_gui():
 
     # Dropdowns
     model_choices = ["resnet", "efficientnet", "vit", "twolayerscnn", "All"]
-    batch_choices = ["32", "32,64", "32,64,128"]
     model_dropdown = ttk.Combobox(root, values=model_choices)
-    batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
     
     # Checkboxes
     download_pre_built_models = Checkbutton(root, text="Download Missing Pre Built Models if Available", variable=DOWNLOAD_PRE_BUILT_MODELS)
+    show_batch_32_models = Checkbutton(root, text="Show Batch 32 Models", variable=SHOW_BATCH_32_MODELS)
+    show_batch_64_models = Checkbutton(root, text="Show Batch 64 Models", variable=SHOW_BATCH_64_MODELS)
+    show_batch_128_models = Checkbutton(root, text="Show Batch 128 Models", variable=SHOW_BATCH_128_MODELS)
     show_accuracy_metrics_checkbox = Checkbutton(root, text="Display Accuracy Metrics", variable=SHOW_ACCURACY_METRICS)
     show_precision_metrics_checkbox = Checkbutton(root, text="Display Precision Metrics", variable=SHOW_PRECISION_METRICS)
     show_recall_metrics_checkbox = Checkbutton(root, text="Display Recall Metrics", variable=SHOW_RECALL_METRICS)
@@ -336,7 +347,9 @@ def setup_gui():
     
     # Set default values
     model_dropdown.set(MODEL_CHOICE)
-    batch_size_dropdown.set(BATCH_SIZE_CHOICE)
+    show_batch_32_models.select()
+    show_batch_64_models.select()
+    show_batch_128_models.select()
     download_pre_built_models.select()
     show_accuracy_metrics_checkbox.select()
     show_precision_metrics_checkbox.select()
@@ -347,20 +360,22 @@ def setup_gui():
     model_label.pack(anchor='center', padx=10, pady=5)
     model_dropdown.pack(anchor='center', padx=10, pady=5)
     batch_choices_label.pack(anchor='center', padx=10, pady=5)
-    batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
     download_pre_built_models.pack(anchor='center', padx=10, pady=5)
+    show_batch_32_models.pack(anchor='center', padx=10, pady=5)
+    show_batch_64_models.pack(anchor='center', padx=10, pady=5)
+    show_batch_128_models.pack(anchor='center', padx=10, pady=5)
     show_accuracy_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
     show_precision_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
     show_recall_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
     show_f1_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
 
-    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, batch_size_dropdown, root))
+    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, root))
     submit_button.pack(anchor='center', padx=10, pady=20)
 
     # Keep the main loop running until explicitly destroyed
     root.mainloop()
 
-def on_submit_click(model_dropdown, batch_size_dropdown, root):
+def on_submit_click(model_dropdown, root):
     """
     Handles the event when the submit button is clicked in the GUI. Updates global settings based on user selection.
 
@@ -369,10 +384,10 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
         batch_size_dropdown (ttk.Combobox): Dropdown menu for selecting the batch size.
         root (tk.Tk): Root window of the GUI.
     """
+    
     global MODEL_CHOICE, BATCH_SIZE_CHOICE
     
     MODEL_CHOICE = model_dropdown.get()
-    BATCH_SIZE_CHOICE = batch_size_dropdown.get()
     
     # Postpone root destruction to after the main loop
     root.after(100, root.destroy)
@@ -382,10 +397,11 @@ def main():
     """
     Main function to run the setup GUI and perform subsequent model training or evaluation based on the GUI inputs.
     """
+    
     setup_gui()
-    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3" 
+    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3", 
                      "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
-    batch_sizes = [32,64,128]
+    batch_sizes = []
     
     if MODEL_CHOICE:
         if MODEL_CHOICE == "resnet":
@@ -397,13 +413,13 @@ def main():
         elif MODEL_CHOICE == "twolayerscnn":
             models_to_run = ["twolayerscnn"]
             
-    if BATCH_SIZE_CHOICE:
-        if BATCH_SIZE_CHOICE == "32":
-            batch_sizes = [32]
-        elif BATCH_SIZE_CHOICE == "32,64":
-            batch_sizes = [32,64]
-        elif BATCH_SIZE_CHOICE == "32,64,128":
-            batch_sizes = [32,64,128]
+
+    if (SHOW_BATCH_32_MODELS.get()):
+        batch_sizes.append(32)
+    if (SHOW_BATCH_64_MODELS.get()):
+        batch_sizes.append(64)
+    if (SHOW_BATCH_128_MODELS.get()):
+        batch_sizes.append(128)
     
     # Read dataset and gather into dataframe
     train_data, test_data, categories = load_dataset()
@@ -442,7 +458,7 @@ def main():
                 test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
             ))
             
-        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "Histories"), models_to_run, batch_sizes)
+        all_histories = load_and_structure_histories(histories)
         metrics = []
         
         if (SHOW_ACCURACY_METRICS.get()):
