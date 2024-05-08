@@ -15,7 +15,6 @@ from tkinter import Checkbutton, ttk
 from scipy.io import loadmat
 from PIL import Image
 
-os.chdir("C:\\Users\\Andrew McCormack\\OneDrive\\Artificial Intelligence - MSc\\Applications of Machine Learning\\Group Project\\CMT316CW2")
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -164,17 +163,6 @@ def load_and_structure_histories(histories_directory, models_to_run, batch_sizes
                     
     return all_histories
 
-def model_oom_safety_check(model_name, batch_size):
-    is_model_oom_safe = True
-    
-    # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
-    if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
-        (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
-        is_model_oom_safe = False
-
-    return is_model_oom_safe
-        
-
 def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
     pre_built_model_links = json.loads(json.dumps({"efficientnet_b0_32.pkl":"https://drive.google.com/uc?export=download&id=11eDWSD72mpWP6XgkQ0SY4QVG4Rx59y9V",
                                                     "efficientnet_b0_64.pkl":"https://drive.google.com/uc?export=download&id=14q_-Sj2rTohsI4RTA3cPkzimzBJJk9TO",
@@ -193,25 +181,22 @@ def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
     
     for model_to_run in models_to_run:
         for batch_size in batch_sizes:
-            if (model_oom_safety_check(model_to_run, batch_size)):
-                history_filename = f"{model_to_run}_{str(batch_size)}.pkl"
-                history_file_path = os.path.join(histories_directory, history_filename)
-                
-                if (os.path.isfile(history_file_path)):
-                    print(f"{history_file_path} already exists, no need to download")
-                else:
-                    # Create a session to handle cookies
-                    session = requests.Session()
-                    
-                    if (history_filename in pre_built_model_links):
-                        pre_built_modeld_link = pre_built_model_links[history_filename]
-                        print(f"{history_file_path} was not found , it will be downloaded from: {pre_built_modeld_link}.")
-                        
-                        gdown.download(pre_built_modeld_link, history_file_path)
-                    else:
-                         print(f"{history_file_path} was not found , and a pre built downloaded could not be found for it.")
+            history_filename = f"{model_to_run}_{str(batch_size)}.pkl"
+            history_file_path = os.path.join(histories_directory, history_filename)
+            
+            if (os.path.isfile(history_file_path)):
+                print(f"{history_file_path} already exists, no need to download")
             else:
-                print(f"Skipping download for {model_to_run} with batch size {batch_size} to avoid OOM error")
+                # Create a session to handle cookies
+                session = requests.Session()
+                
+                if (history_filename in pre_built_model_links):
+                    pre_built_modeld_link = pre_built_model_links[history_filename]
+                    print(f"{history_file_path} was not found , it will be downloaded from: {pre_built_modeld_link}.")
+                    
+                    gdown.download(pre_built_modeld_link, history_file_path)
+                else:
+                        print(f"{history_file_path} was not found , and a pre built downloaded could not be found for it.")
     
     
 def setup_gui():
