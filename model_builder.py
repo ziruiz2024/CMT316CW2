@@ -1,3 +1,26 @@
+"""
+Image Classification and Model Training System
+
+This module provides functionalities for training and evaluating various machine learning models on dog breed image classification.
+It supports a range of architectures from simpler convolutional networks to more complex models like ResNet and EfficientNet.
+
+Features include:
+- Loading and preprocessing datasets from .mat files and XML annotations.
+- Defining custom datasets and dataloaders for image handling.
+- Building and training predefined model architectures with custom output layers to fit the number of target categories.
+- GUI for model and batch size selection to streamline the evaluation process.
+- Tracking and saving performance metrics such as loss, accuracy, precision, recall, and F1 score.
+
+The script requires PyTorch, torchvision, pandas, numpy, and tkinter among other libraries. It is structured to run from
+the command line, initializing with a GUI for setup before commencing the training cycle. The models and their training
+histories are saved in specified directories for later analysis.
+
+Usage:
+    python model_builder.py
+
+Dependencies:
+    PyTorch, torchvision, tkinter, pandas, numpy, tqdm, sklearn, scipy, PIL
+"""
 import xml.etree.ElementTree as ET
 import torch
 import torch.nn as nn
