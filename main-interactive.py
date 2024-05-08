@@ -237,7 +237,7 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
     test_f1 = []
     max_accuracy = 0
 
-    epoch = 1
+    epoch = 22
     while True:
 
         model.train()
@@ -306,7 +306,7 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
         if (test_accs[-1] > max_accuracy):
             max_accuracy = test_accs[-1]
             torch.save(model, path_model)
-            print("Model", model.name, "trained and saved")
+            print("Model", path_model, "trained and saved")
         
         scheduler.step(test_accs[-1])
         if optimizer.param_groups[0]['lr'] < 1e-6:
@@ -334,7 +334,7 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
 def setup_gui():
     root = tk.Tk()
     root.title = "Model Selection"
-    root.geometry("600x400")
+    root.geometry("400x300")
     
     # Create checkbox variables
     global SHOW_LOSS_METRICS
@@ -384,6 +384,13 @@ def on_submit_click(model_dropdown, batch_size_dropdown, root):
     # Postpone root destruction to after the main loop
     root.after(100, root.destroy)
     
+# Load the model
+def load_model(model_path, categories):
+    model = resnet152(pretrained=True)
+    model.fc = torch.nn.Linear(model.fc.in_features, len(categories))
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    model.eval()
+    return model
 
 def main():
     setup_gui()
@@ -446,36 +453,36 @@ def main():
     train_dataset = CustomDataset(dftrain, transform=train_transforms)
     test_dataset = CustomDataset(dftest, transform=test_transforms)
 
-    model_name = "efficientnet_b4"
-    for batch_size in batch_sizes:
-        print(model_name + "_" + str(batch_size))
-        try:
-            name = model_name + "_" + str(batch_size)
-            path_history = op.join("Histories", name + ".pkl")
-            path_model = op.join("Histories", name + ".pth")
-            
-            # Skip models that have already been built
-            if op.exists(path_history):
-                print("Model", name, "already trained, skipping")
+    for model_name in models_to_run:
+        for batch_size in batch_sizes:
+            print(model_name + "_" + str(batch_size))
+            try:
+                name = model_name + "_" + str(batch_size)
+                path_history = op.join("Histories", name + ".pkl")
+                path_model = op.join("Histories", name + ".pth")
+                
+                # Skip models that have already been built
+                if op.exists(path_history):
+                    print("Model", name, "already trained, skipping")
+                    continue
+                
+                # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
+                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
+                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+                    print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
+                    continue
+                model = build_model(model_name, categories).to(device)
+                history = train_model(model, device, train_dataset, test_dataset, path_model, batch_size=batch_size)
+                with open(path_history, "wb") as f:
+                    pickle.dump(history, f)
+            # OOM
+            except RuntimeError as e:
+                print(str(e))
+                print("Model", name, "OOM, skipping")
+            except Exception as e:
+                print(str(e))
+                print("Model", name, "Error", e)
                 continue
-            
-            # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
-            if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
-                (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
-                print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
-                continue
-            model = build_model(model_name, categories).to(device)
-            history = train_model(model, device, train_dataset, test_dataset, path_model, batch_size=batch_size)
-            with open(path_history, "wb") as f:
-                pickle.dump(history, f)
-        # OOM
-        except RuntimeError as e:
-            print(str(e))
-            print("Model", name, "OOM, skipping")
-        except Exception as e:
-            print(str(e))
-            print("Model", name, "Error", e)
-            continue
-    
+        
 if __name__ == '__main__':
     main()
