@@ -1,3 +1,26 @@
+"""
+Image Classifier with GUI for Image Folder Browsing
+
+This script implements a graphical user interface (GUI) client for selecting a folder of images and displaying them. Each image is sent
+to a predefined server endpoint for classification, and the results are displayed under each image.
+
+Key Features:
+- Browse and select a folder containing images.
+- Display images in a grid within the GUI.
+- Send images to a server endpoint for classification via HTTP POST requests.
+- Display classification results beneath each image.
+
+Dependencies:
+- requests: For making HTTP requests to the server.
+- tkinter: For the GUI components.
+- PIL: For image handling.
+- glob, os: For directory and file operations.
+
+Usage:
+    Execute this script directly from the command line to start the GUI and interact with the image classification system.
+    `python dog_classifier_api_client.py`
+
+"""
 import requests
 import tkinter as tk
 import glob
@@ -8,6 +31,13 @@ from PIL import Image, ImageTk
 URL = "http://127.0.0.1:5000/predict"
 
 def browse_image_folder(frame):
+    """
+    Opens a file dialog to select a directory and displays images from the selected directory in the provided frame.
+
+    Parameters:
+        frame (tk.Frame): The frame where images and their classification results will be displayed.
+    """
+    
     image_paths = []
     path = filedialog.askdirectory(title="Select Folder")
     if path:
@@ -19,6 +49,14 @@ def browse_image_folder(frame):
         display_images(frame, image_paths)
 
 def display_images(frame, image_paths):
+    """
+    Displays images in a grid layout within the given frame and makes HTTP requests to classify each image.
+
+    Parameters:
+        frame (tk.Frame): The frame where images are to be displayed.
+        image_paths (list of str): A list of file paths to the images to be displayed and classified.
+    """
+    
     num_images = len(image_paths)
     num_columns = 4
     num_rows = (num_images + num_columns - 1) // num_columns
@@ -57,6 +95,10 @@ def display_images(frame, image_paths):
 
 
 def setup_gui():
+    """
+    Sets up the main window and components of the GUI, including the canvas, scrollbar, and buttons for interaction.
+    """
+    
     root = tk.Tk()
     root.title("Image Loader")
     root.geometry("900x600")
@@ -92,6 +134,10 @@ def setup_gui():
     root.mainloop()
 
 def main():
+    """
+    The main function to launch the GUI. This function calls `setup_gui()` to create and display the main window and its components.
+    """
+    
     setup_gui()
 
 if __name__ == '__main__':
