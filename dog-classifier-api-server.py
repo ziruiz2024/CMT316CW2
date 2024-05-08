@@ -85,13 +85,13 @@ def predict():
 def setup_gui():
     root = tk.Tk()
     root.title = "Model Selection"
-    root.geometry("400x300")
+    root.geometry("300x200")
     
     models = glob.glob(os.path.join(BASE_DIRECTORY, "Histories/*.pth"))
     model_choices = []
     
     # Labels
-    model_label = tk.Label(root, text="Select the model(s) to evaluate")
+    model_label = tk.Label(root, text="Select the model to use for classification")
     
     # Dropdowns
     for model in models:
