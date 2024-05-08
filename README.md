@@ -1,7 +1,7 @@
 # CV-2: Fine-grained image classification (Dogs) Repository
 
 ### 1. Download dataset from http://vision.stanford.edu/aditya86/ImageNetDogs/
-### 2. Download models from https://download.pytorch.org/models/resnet18-f37072fd.pth
+### 2. Take resnet18 as an example: Download models from https://download.pytorch.org/models/resnet18-f37072fd.pth
 ### 3. Run main.ipynb
 
 To run the code, ensure the working directory is in the following structure

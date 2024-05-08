@@ -1,3 +1,26 @@
+"""
+Image Classification and Model Training System
+
+This module provides functionalities for training and evaluating various machine learning models on dog breed image classification.
+It supports a range of architectures from simpler convolutional networks to more complex models like ResNet and EfficientNet.
+
+Features include:
+- Loading and preprocessing datasets from .mat files and XML annotations.
+- Defining custom datasets and dataloaders for image handling.
+- Building and training predefined model architectures with custom output layers to fit the number of target categories.
+- GUI for model and batch size selection to streamline the evaluation process.
+- Tracking and saving performance metrics such as loss, accuracy, precision, recall, and F1 score.
+
+The script requires PyTorch, torchvision, pandas, numpy, and tkinter among other libraries. It is structured to run from
+the command line, initializing with a GUI for setup before commencing the training cycle. The models and their training
+histories are saved in specified directories for later analysis.
+
+Usage:
+    python model_builder.py
+
+Dependencies:
+    PyTorch, torchvision, tkinter, pandas, numpy, tqdm, sklearn, scipy, PIL
+"""
 import xml.etree.ElementTree as ET
 import torch
 import torch.nn as nn
@@ -7,6 +30,8 @@ import pandas as pd
 import os
 import os.path as op
 import numpy as np 
+import math
+import glob
 from tqdm import tqdm
 from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
 from torchvision.models import (
@@ -15,16 +40,41 @@ from torchvision.models import (
 )
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from tkinter import ttk
+from tkinter import ttk, Checkbutton
 from sklearn import metrics
 from scipy.io import loadmat
 from PIL import Image
+from matplotlib import pyplot as plt
 
+# Declare global variables
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
+
 def load_dataset():
+    """
+    Loads image data and annotations from a dataset, separating the data into training and testing sets.
+
+    This function performs the following operations:
+    - Loads a list of image filenames and labels from 'train_list.mat' and 'test_list.mat' files located within the specified base directory.
+    - Constructs the training and testing datasets by reading the associated XML files for each image to obtain bounding box annotations and other metadata.
+    - Records the categorical IDs for each label based on the directory names in the dataset, adjusting labels to be zero-indexed.
+
+    Each entry in the training and testing datasets is a dictionary containing:
+    - The path to the image
+    - The zero-indexed label ID
+    - The label name (directory name)
+    - Image dimensions (width and height)
+    - Bounding box coordinates (xmin, ymin, xmax, ymax)
+
+    Returns:
+        tuple: A tuple containing:
+            - List of dictionaries for training data
+            - List of dictionaries for testing data
+            - Dictionary mapping label names to zero-indexed label IDs
+    """
+    
     # Get train list
     f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
@@ -50,7 +100,7 @@ def load_dataset():
         label_name = os.path.split(image)[0]
         # Label -1 to make it 0-indexed
         categories[label_name] = label-1
-        annotation_path = os.path.join("Annotation", image.replace(".jpg", ""))
+        annotation_path = os.path.join(BASE_DIRECTORY, "Annotation", image.replace(".jpg", ""))
 
         # Read XML
         tree = ET.parse(annotation_path)
@@ -96,14 +146,47 @@ def load_dataset():
 
 # Inherit from Dataset
 class CustomDataset(Dataset):
+    """
+    A custom dataset class that extends PyTorch's Dataset class. This class is tailored for handling image datasets.
+    
+    Attributes:
+        df (DataFrame): A pandas DataFrame containing the paths to the images and their corresponding labels.
+        transform (callable, optional): A function/transform that takes in a PIL image and returns a transformed version.
+    """
+    
     def __init__(self, df, transform=None):
+        """
+        Initializes the CustomDataset instance with a DataFrame and optional transform.
+
+        Parameters:
+            df (DataFrame): The DataFrame containing the image paths and labels.
+            transform (callable, optional): The transform to be applied to each image.
+        """
+        
         self.df = df
         self.transform = transform
 
     def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        
+        Returns:
+            int: The total number of images.
+        """
+        
         return len(self.df)
     
     def __getitem__(self, idx):
+        """
+        Retrieves an image and its label from the dataset at the specified index. Applies a transform to the image if one is provided.
+
+        Parameters:
+            idx (int): The index of the item to retrieve.
+
+        Returns:
+            tuple: A tuple containing the transformed image and its label as a tensor.
+        """
+        
         row = self.df.iloc[idx]
         image = Image.open(row['image'])
         image = image.convert('RGB')
@@ -115,7 +198,25 @@ class CustomDataset(Dataset):
         return image, label
 
 class TwoLayersCNN(nn.Module):
+    """
+    A simple two-layer convolutional neural network that extends PyTorch's nn.Module.
+
+    Attributes:
+        conv1 (nn.Conv2d): The first convolutional layer with a kernel size of 3 and padding of 1, outputting 64 feature maps.
+        conv2 (nn.Conv2d): The second convolutional layer with a kernel size of 3 and padding of 1, outputting 128 feature maps.
+        pool (nn.MaxPool2d): Max pooling layer that reduces spatial dimensions by half.
+        fc1 (nn.Linear): A fully connected layer that flattens the output of the second convolutional layer and feeds it into 512 neurons.
+        fc2 (nn.Linear): The final fully connected layer that outputs the logits for each class.
+    """
+    
     def __init__(self, num_classes):
+        """
+        Initializes the TwoLayersCNN with the specified number of output classes.
+
+        Parameters:
+            num_classes (int): The number of classes in the classification task.
+        """
+        
         super(TwoLayersCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
@@ -124,6 +225,16 @@ class TwoLayersCNN(nn.Module):
         self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, x):
+        """
+        Defines the forward pass of the neural network.
+
+        Parameters:
+            x (Tensor): The input tensor containing the batch of images.
+
+        Returns:
+            Tensor: The output tensor containing the logits of the network for each class.
+        """
+        
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = x.view(-1, 128 * 56 * 56)
@@ -132,6 +243,21 @@ class TwoLayersCNN(nn.Module):
         return x
 
 def build_model(model_name, categories):
+    """
+    Constructs a neural network model based on the specified model name and number of output classes derived from the categories list.
+
+    Parameters:
+        model_name (str): The name of the model to build. Supported models include 'twolayerscnn', various versions of 'resnet',
+                          'efficientnet', and 'vit' architectures.
+        categories (list): A list of categories which determines the number of output classes.
+
+    Returns:
+        nn.Module: The constructed neural network model with the final layer adjusted to match the number of categories.
+
+    Raises:
+        ValueError: If the model_name is not supported.
+    """
+    
     if model_name == 'twolayerscnn':
         model = TwoLayersCNN(len(categories))
     elif model_name == 'resnet18':
@@ -213,8 +339,21 @@ def build_model(model_name, categories):
 
 def train_model(model, device, train_dataset, test_dataset, path_model, batch_size=32):
     """
-    Train the model, this function will return a dictionary containing the training and testing loss and accuracy
+    Trains a neural network model using specified training and validation datasets with options to save the best model based on accuracy.
+
+    Parameters:
+        model (nn.Module): The neural network model to train.
+        device (torch.device): The device (GPU or CPU) on which to train the model.
+        train_dataset (Dataset): The dataset to use for training.
+        test_dataset (Dataset): The dataset to use for validation.
+        path_model (str): Path to save the best performing model.
+        batch_size (int, optional): Number of samples per batch of computation. Default is 32.
+
+    Returns:
+        dict: A dictionary containing metrics such as training and testing loss and accuracy, precision, recall, F1 score,
+        and confusion matrices across epochs.
     """
+    
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
@@ -238,7 +377,7 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
     test_f1 = []
     max_accuracy = 0
 
-    epoch = 22
+    epoch = 0
     while True:
 
         model.train()
@@ -332,90 +471,160 @@ def train_model(model, device, train_dataset, test_dataset, path_model, batch_si
         test_confusion_matrix=test_confusion_matrix
     ),
     
+def plot_history(history, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    train_iters_per_epoch = history['train_iters_per_epoch']
+    test_iters_per_epoch = history['test_iters_per_epoch']
+    train_losses = history['train_losses']
+    test_losses = history['test_losses']
+    train_accs = history['train_accs']
+    test_accs = history['test_accs']
+    # Dual axis
+    train_losses = np.array(train_losses)
+    # Exponential moving average
+    train_losses_smooth = np.zeros_like(train_losses)
+    train_losses_smooth[0] = train_losses[0]
+    for i in range(1, len(train_losses)):
+        train_losses_smooth[i] = 0.9 * train_losses_smooth[i-1] + 0.1 * train_losses[i]
+    test_losses = np.array(test_losses)
+    test_losses_smooth = np.zeros_like(test_losses)
+    test_losses_smooth[0] = test_losses[0]
+    for i in range(1, len(test_losses)):
+        test_losses_smooth[i] = 0.9 * test_losses_smooth[i-1] + 0.1 * test_losses[i]
+    ax2 = ax.twinx()
+    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses, label="Train Loss", color='tab:blue', alpha=0.5)
+    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses, label="Test Loss", color='tab:orange', alpha=0.5)
+    ax.plot(np.arange(len(train_losses)) / train_iters_per_epoch, train_losses_smooth, color='tab:blue')
+    ax.plot(np.arange(len(test_losses)) / test_iters_per_epoch, test_losses_smooth, color='tab:orange')
+    ax2.plot(np.arange(len(train_accs)), train_accs, label="Train Accuracy", color='tab:green')
+    ax2.plot(np.arange(len(test_accs)), test_accs, label="Test Accuracy", color='tab:red')
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax2.set_ylabel("Accuracy")
+    ax.legend(loc='upper left')
+    ax2.legend(loc='upper right')
+    ax.grid()
+    return ax
+    
 def setup_gui():
+    """
+    Sets up a graphical user interface for selecting models and batch sizes for evaluation.
+
+    This function initializes a window with drop-down menus to select a specific model architecture or a batch size for training,
+    and a submit button to finalize the selection.
+    """
+    
     root = tk.Tk()
     root.title = "Model Selection"
     root.geometry("400x300")
     
     # Create checkbox variables
-    global SHOW_LOSS_METRICS
-    global SHOW_ACCURACY_METRICS
-    global SHOW_PRECISION_METRICS
-    global SHOW_RECALL_METRICS
-    global SHOW_F1_METRICS
+    global CREATE_BATCH_32_MODELS
+    global CREATE_BATCH_64_MODELS
+    global CREATE_BATCH_128_MODELS
     
-    SHOW_LOSS_METRICS = tk.BooleanVar(value=True)
-    SHOW_ACCURACY_METRICS = tk.BooleanVar(value=True)
-    SHOW_PRECISION_METRICS = tk.BooleanVar(value=True)
-    SHOW_RECALL_METRICS = tk.BooleanVar(value=True)
-    SHOW_F1_METRICS = tk.BooleanVar(value=True)
+    CREATE_BATCH_32_MODELS = tk.BooleanVar(value=True)
+    CREATE_BATCH_64_MODELS = tk.BooleanVar(value=True)
+    CREATE_BATCH_128_MODELS = tk.BooleanVar(value=True)
     
     # Labels
     model_label = tk.Label(root, text="Select the model(s) to evaluate")
-    batch_choices_label = tk.Label(root, text="Select the batch size(s) to include in model evaluation")
 
     # Dropdowns
     model_choices = ["resnet", "efficientnet", "vit", "twolayerscnn", "All"]
-    batch_choices = ["32", "32,64", "32,64,128"]
     model_dropdown = ttk.Combobox(root, values=model_choices)
-    batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
+    
+    # Checkboxes
+    create_batch_32_models = Checkbutton(root, text="Create Batch 32 Models", variable=CREATE_BATCH_32_MODELS)
+    create_batch_64_models = Checkbutton(root, text="Create Batch 64 Models", variable=CREATE_BATCH_64_MODELS)
+    create_batch_128_models = Checkbutton(root, text="Create Batch 128 Models", variable=CREATE_BATCH_128_MODELS)
     
     # Set default values
     model_dropdown.set(MODEL_CHOICE)
-    batch_size_dropdown.set(BATCH_SIZE_CHOICE)
+    create_batch_32_models.select()
+    create_batch_64_models.select()
+    create_batch_128_models.select()
 
     # Packing
     model_label.pack(anchor='center', padx=10, pady=5)
     model_dropdown.pack(anchor='center', padx=10, pady=5)
-    batch_choices_label.pack(anchor='center', padx=10, pady=5)
-    batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
+    create_batch_32_models.pack(anchor='center', padx=10, pady=5)
+    create_batch_64_models.pack(anchor='center', padx=10, pady=5)
+    create_batch_128_models.pack(anchor='center', padx=10, pady=5)
 
-    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, batch_size_dropdown, root))
+    submit_button = tk.Button(root, text="Submit", command=lambda: on_submit_click(model_dropdown, root))
     submit_button.pack(anchor='center', padx=10, pady=20)
 
     # Keep the main loop running until explicitly destroyed
     root.mainloop()
 
-def on_submit_click(model_dropdown, batch_size_dropdown, root):
+def on_submit_click(model_dropdown, root):
+    """
+    Handles the event triggered by clicking the submit button in the GUI. This function retrieves the selected model and batch size
+    from the dropdowns, updates global variables accordingly, and destroys the GUI root after a slight delay.
+
+    Parameters:
+        model_dropdown (ttk.Combobox): Dropdown menu containing the model options.
+        batch_size_dropdown (ttk.Combobox): Dropdown menu containing the batch size options.
+        root (tk.Tk): The root window of the GUI.
+    """
+    
     global MODEL_CHOICE, BATCH_SIZE_CHOICE
     
     MODEL_CHOICE = model_dropdown.get()
-    BATCH_SIZE_CHOICE = batch_size_dropdown.get()
     
     # Postpone root destruction to after the main loop
     root.after(100, root.destroy)
     
-# Load the model
-def load_model(model_path, categories):
-    model = resnet152(pretrained=True)
-    model.fc = torch.nn.Linear(model.fc.in_features, len(categories))
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-    model.eval()
-    return model
+def model_oom_safety_check(model_name, batch_size):
+    """
+    Checks if a given combination of model name and batch size is known to cause out-of-memory (OOM) issues on the GPU.
 
+    Parameters:
+        model_name (str): The name of the model to evaluate.
+        batch_size (int): The batch size to evaluate.
+
+    Returns:
+        bool: True if the combination is known to be unsafe and may cause OOM errors, False otherwise.
+    """
+    
+    is_model_oom_unsafe = False
+    
+    # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
+    if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1"] and batch_size == 128) or 
+        (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"] and batch_size in [64, 128])):
+        is_model_oom_unsafe = True
+
+    return is_model_oom_unsafe
+    
 def main():
+    """
+    The main function to run the model training processes. It initializes the GUI for selection, processes the selections, and
+    manages dataset loading and model training based on user inputs. Also includes safety checks for OOM and saves models
+    and their histories based on training performance.
+    """
+    
     setup_gui()
-    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3" 
-                     "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
-    batch_sizes = [32,64,128]
+    models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152", "efficientnet_b0", "efficientnet_b1", "efficientnet_b3", "efficientnet_b4", "vit_b_16", "vit_b_32", "twolayerscnn"]
+    batch_sizes = []
     
     if MODEL_CHOICE:
         if MODEL_CHOICE == "resnet":
             models_to_run = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
         elif MODEL_CHOICE == "efficientnet":
-            models_to_run = [ "efficientnet_b0", "efficientnet_b1", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4"]
+            models_to_run = [ "efficientnet_b0", "efficientnet_b1", "efficientnet_b3", "efficientnet_b4"]
         elif MODEL_CHOICE == "vit":
             models_to_run = ["vit_b_16", "vit_b_32"]
         elif MODEL_CHOICE == "twolayerscnn":
             models_to_run = ["twolayerscnn"]
             
-    if BATCH_SIZE_CHOICE:
-        if BATCH_SIZE_CHOICE == "32":
-            batch_sizes = [32]
-        elif BATCH_SIZE_CHOICE == "32,64":
-            batch_sizes = [32,64]
-        elif BATCH_SIZE_CHOICE == "32,64,128":
-            batch_sizes = [32,64,128]
+    if (CREATE_BATCH_32_MODELS.get()):
+        batch_sizes.append(32)
+    if (CREATE_BATCH_64_MODELS.get()):
+        batch_sizes.append(64)
+    if (CREATE_BATCH_128_MODELS.get()):
+        batch_sizes.append(128)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -468,8 +677,7 @@ def main():
                     continue
                 
                 # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
-                if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
-                    (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+                if (model_oom_safety_check(model_name, batch_size)):
                     print(f"Skipping training for {model_name} with batch size {batch_size} to avoid OOM error")
                     continue
                 model = build_model(model_name, categories).to(device)
@@ -484,6 +692,48 @@ def main():
                 print(str(e))
                 print("Model", name, "Error", e)
                 continue
+
+    histories = []
+    for model_name in models_to_run:
+        for batch_size in batch_sizes:
+            history_file = os.path.join(BASE_DIRECTORY, "Histories", f"{model_name}_{batch_size}.pkl")
+            
+            if (os.path.isfile(history_file)):
+                histories.append(history_file)
+
+    data = []
+    for hist in histories:
+        with open(hist, "rb") as f:
+            history = pickle.load(f)
+        model_name = op.basename(hist).replace(".pkl", "")
+        model_name_list = model_name.split("_")
+        model_name = "_".join(model_name_list[:-1])
+        batch_size = int(model_name_list[-1])
+
+        data.append(dict(
+            model=model_name,
+            batch_size=batch_size,
+            train_acc_best="{:.4f}".format(max(history[0]['train_accs'])),
+            test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
+        ))
+
+    result_df = pd.DataFrame(data)
+    print(result_df.to_markdown())
+
+    _, axes = plt.subplots(math.ceil(len(histories) / 4), 4, figsize=(15, 15))
+    axes = axes.flatten()
+
+    for i, hist in enumerate(histories):
+        with open(hist, "rb") as f:
+            history = pickle.load(f)
+        name = op.basename(hist).replace(".pkl", "")
+        ax = axes[i]
+        plot_history(history[0], ax=ax)
+        ax.set_title(name)
+        
+
+    plt.tight_layout()
+    plt.show()
         
 if __name__ == '__main__':
     main()
