@@ -19,3 +19,5 @@ To run the code, ensure the working directory is in the following structure
 ```
 
 Then, open `main.ipynb` and run the notebook using Jupyter Notebook or other compatible software.
+
+### 4. History can be found at this link: [Google Drive Document](https://drive.google.com/file/d/1TC2a9c_wqk9VKWr6p3fS8kSy0TWy14r1/view?usp=sharing)
