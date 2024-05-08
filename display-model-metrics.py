@@ -1,17 +1,20 @@
 import xml.etree.ElementTree as ET
 import torch
 import tkinter as tk
+import requests
 import plotly.graph_objects as go
 import pickle
 import pandas as pd
 import os
 import os.path as op
+import json
+from tqdm import tqdm
 from torch.utils.data import Dataset
 from tkinter import Checkbutton, ttk
 from scipy.io import loadmat
 from PIL import Image
-from pathlib import Path
 
+os.chdir("C:\\Users\\Andrew McCormack\\OneDrive\\Artificial Intelligence - MSc\\Applications of Machine Learning\\Group Project\\CMT316CW2")
 MODEL_CHOICE = "All"
 BATCH_SIZE_CHOICE = "32,64,128"
 BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -159,6 +162,64 @@ def load_and_structure_histories(histories_directory, models_to_run, batch_sizes
                     all_histories[key].append({'model': model_name, 'values': history[0][key]})
                     
     return all_histories
+
+def model_oom_safety_check(model_name, batch_size):
+    is_model_oom_safe = True
+    
+    # Skip combinations of model_name and batch_size that cause an out of memory exception to throw
+    if ((model_name in ["resnet50", "efficientnet_b0", "efficientnet_b1", "twolayerscnn"] and batch_size == 128) or 
+        (model_name in ["resnet101", "resnet152", "efficientnet_b2", "efficientnet_b3", "efficientnet_b4", "vit_b_16"] and batch_size in [64, 128])):
+        is_model_oom_safe = False
+
+    return is_model_oom_safe
+        
+
+def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
+    pre_built_model_links = json.loads(json.dumps({"efficientnet_b0_32.pkl":"https://drive.google.com/uc?export=download&id=11eDWSD72mpWP6XgkQ0SY4QVG4Rx59y9V",
+                                                    "efficientnet_b0_64.pkl":"https://drive.google.com/uc?export=download&id=14q_-Sj2rTohsI4RTA3cPkzimzBJJk9TO",
+                                                    "efficientnet_b1_32.pkl":"https://drive.google.com/uc?export=download&id=1frEXIHsG7kTfhu-hsY93gnwYdD09-03C",
+                                                    "efficientnet_b4_32.pkl":"https://drive.google.com/uc?export=download&id=1BbUA0r1GwF5DQj2lE-U1VzEt_dgNcUPf",
+                                                    "resnet18_32.pkl":"https://drive.google.com/uc?export=download&id=1QULFR3v3s0jiVuvkwc6WLazA32CGcBT3",
+                                                    "resnet18_64.pkl":"https://drive.google.com/uc?export=download&id=145NNvFdIrve1_Sz57jcUX4EChy2lMkxv",
+                                                    "resnet18_128.pkl":"https://drive.google.com/uc?export=download&id=1QM6xceookZkUYLdqyJ5aBqYBlbZOTYRW",
+                                                    "resnet34_32.pkl":"https://drive.google.com/uc?export=download&id=1-mEg8giPUfHcdVr8luRq0kHR4Oh82uIM",
+                                                    "resnet34_64.pkl":"https://drive.google.com/uc?export=download&id=1uEQKdZMnI-DI0Go_1QI8Fz7GinFjZjMY",
+                                                    "resnet34_128.pkl":"https://drive.google.com/uc?export=download&id=17GFPN2PbWwMGVHi3jjrMFkglU7LEA5tx",
+                                                    "resnet50_32.pkl":"https://drive.google.com/uc?export=download&id=1cJmjxzAMCi0A0VXk6MTWXTvvBuGmUDbH",
+                                                    "resnet50_64.pkl":"https://drive.google.com/uc?export=download&id=1LvOczQzBXo1JCQFBiPH2JxJ6PAj_YnzO",
+                                                    "resnet101_32.pkl":"https://drive.google.com/uc?export=download&id=1lUglK6oA1wR1SjbNfFGSdRRPm0w54E3T",
+                                                    "resnet152_32.pkl":"https://drive.google.com/uc?export=download&id=1VjcARxHKnckpIlgBuXQCtGqLTeF16ZBQ"}))
+    
+    for model_to_run in models_to_run:
+        for batch_size in batch_sizes:
+            if (model_oom_safety_check(model_to_run, batch_size)):
+                history_filename = f"{model_to_run}_{str(batch_size)}.pkl"
+                history_file = os.path.join(histories_directory, history_filename)
+                
+                if (os.path.isfile(history_file)):
+                    print(f"{history_file} already exists, no need to download")
+                else:
+                    # Create a session to handle cookies
+                    session = requests.Session()
+                    
+                    if (history_filename in pre_built_model_links):
+                        pre_built_modeld_link = pre_built_model_links[history_filename]
+                        print(f"{history_file} was not found , it will be downloaded from: {pre_built_modeld_link}.")
+                        
+                        # Start the request to download
+                        response = session.get(pre_built_modeld_link, stream=True)
+
+                        with open(history_file, "wb") as f:
+                            total = int(response.headers.get('content-length', 0))
+                            with tqdm(total=total, unit='B', unit_scale=True, desc=history_file) as bar:
+                                for data in response.iter_content(chunk_size=1024):
+                                    size = f.write(data)
+                                    bar.update(size)
+                    else:
+                         print(f"{history_file} was not found , but  a pre built downloaded could not be found for it.")
+            else:
+                print(f"Skipping download for {model_to_run} with batch size {batch_size} to avoid OOM error")
+    
     
 def setup_gui():
     root = tk.Tk()
@@ -166,11 +227,13 @@ def setup_gui():
     root.geometry("600x400")
     
     # Create checkbox variables
+    global DOWNLOAD_PRE_BUILT_MODELS
     global SHOW_ACCURACY_METRICS
     global SHOW_PRECISION_METRICS
     global SHOW_RECALL_METRICS
     global SHOW_F1_METRICS
     
+    DOWNLOAD_PRE_BUILT_MODELS = tk.BooleanVar(value=True)
     SHOW_ACCURACY_METRICS = tk.BooleanVar(value=True)
     SHOW_PRECISION_METRICS = tk.BooleanVar(value=True)
     SHOW_RECALL_METRICS = tk.BooleanVar(value=True)
@@ -187,6 +250,7 @@ def setup_gui():
     batch_size_dropdown = ttk.Combobox(root, values=batch_choices)
     
     # Checkboxes
+    download_pre_built_models = Checkbutton(root, text="Download Missing Pre Built Models if Available", variable=DOWNLOAD_PRE_BUILT_MODELS)
     show_accuracy_metrics_checkbox = Checkbutton(root, text="Display Accuracy Metrics", variable=SHOW_ACCURACY_METRICS)
     show_precision_metrics_checkbox = Checkbutton(root, text="Display Precision Metrics", variable=SHOW_PRECISION_METRICS)
     show_recall_metrics_checkbox = Checkbutton(root, text="Display Recall Metrics", variable=SHOW_RECALL_METRICS)
@@ -195,6 +259,7 @@ def setup_gui():
     # Set default values
     model_dropdown.set(MODEL_CHOICE)
     batch_size_dropdown.set(BATCH_SIZE_CHOICE)
+    download_pre_built_models.select()
     show_accuracy_metrics_checkbox.select()
     show_precision_metrics_checkbox.select()
     show_recall_metrics_checkbox.select()
@@ -205,6 +270,7 @@ def setup_gui():
     model_dropdown.pack(anchor='center', padx=10, pady=5)
     batch_choices_label.pack(anchor='center', padx=10, pady=5)
     batch_size_dropdown.pack(anchor='center', padx=10, pady=5)
+    download_pre_built_models.pack(anchor='center', padx=10, pady=5)
     show_accuracy_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
     show_precision_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
     show_recall_metrics_checkbox.pack(anchor='center', padx=10, pady=5)
@@ -251,23 +317,26 @@ def main():
             batch_sizes = [32,64,128]
     
     # Read dataset and gather into dataframe
-    #train_data, test_data, categories = load_dataset()
-    #dftrain = pd.DataFrame(train_data)
-    #dftest = pd.DataFrame(test_data)
+    train_data, test_data, categories = load_dataset()
+    dftrain = pd.DataFrame(train_data)
+    dftest = pd.DataFrame(test_data)
 
     # Get the classes summary
-    #print("Number of classes: ", len(categories))
-    #print("Number of training samples: ", len(dftrain))
-    #print("Number of testing samples: ", len(dftest))
-
+    print("Number of classes: ", len(categories))
+    print("Number of training samples: ", len(dftrain))
+    print("Number of testing samples: ", len(dftest))
+    
+    if (DOWNLOAD_PRE_BUILT_MODELS):
+        download_pre_built_models(os.path.join(BASE_DIRECTORY, "HistoriesOriginal"), models_to_run, batch_sizes)
+    
     histories = []
     for model_name in models_to_run:
         for batch_size in batch_sizes:
-            history_file = os.path.join(BASE_DIRECTORY, "Histories", f"{model_name}_{batch_size}.pkl")
+            history_file = os.path.join(BASE_DIRECTORY, "HistoriesOriginal", f"{model_name}_{batch_size}.pkl")
             
             if (os.path.isfile(history_file)):
                 histories.append(history_file)
-    
+        
     if (len(histories) > 0):
         data = []
         for hist in histories:
@@ -284,7 +353,7 @@ def main():
                 test_acc_best="{:.4f}".format(max(history[0]['test_accs'])),
             ))
             
-        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "Histories"), models_to_run, batch_sizes)
+        all_histories = load_and_structure_histories(os.path.join(BASE_DIRECTORY, "HistoriesOriginal"), models_to_run, batch_sizes)
         metrics = []
         
         if (SHOW_ACCURACY_METRICS.get()):
