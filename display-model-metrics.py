@@ -8,6 +8,7 @@ import pandas as pd
 import os
 import os.path as op
 import json
+import gdown
 from tqdm import tqdm
 from torch.utils.data import Dataset
 from tkinter import Checkbutton, ttk
@@ -194,29 +195,21 @@ def download_pre_built_models(histories_directory, models_to_run, batch_sizes):
         for batch_size in batch_sizes:
             if (model_oom_safety_check(model_to_run, batch_size)):
                 history_filename = f"{model_to_run}_{str(batch_size)}.pkl"
-                history_file = os.path.join(histories_directory, history_filename)
+                history_file_path = os.path.join(histories_directory, history_filename)
                 
-                if (os.path.isfile(history_file)):
-                    print(f"{history_file} already exists, no need to download")
+                if (os.path.isfile(history_file_path)):
+                    print(f"{history_file_path} already exists, no need to download")
                 else:
                     # Create a session to handle cookies
                     session = requests.Session()
                     
                     if (history_filename in pre_built_model_links):
                         pre_built_modeld_link = pre_built_model_links[history_filename]
-                        print(f"{history_file} was not found , it will be downloaded from: {pre_built_modeld_link}.")
+                        print(f"{history_file_path} was not found , it will be downloaded from: {pre_built_modeld_link}.")
                         
-                        # Start the request to download
-                        response = session.get(pre_built_modeld_link, stream=True)
-
-                        with open(history_file, "wb") as f:
-                            total = int(response.headers.get('content-length', 0))
-                            with tqdm(total=total, unit='B', unit_scale=True, desc=history_file) as bar:
-                                for data in response.iter_content(chunk_size=1024):
-                                    size = f.write(data)
-                                    bar.update(size)
+                        gdown.download(pre_built_modeld_link, history_file_path)
                     else:
-                         print(f"{history_file} was not found , but  a pre built downloaded could not be found for it.")
+                         print(f"{history_file_path} was not found , and a pre built downloaded could not be found for it.")
             else:
                 print(f"Skipping download for {model_to_run} with batch size {batch_size} to avoid OOM error")
     
