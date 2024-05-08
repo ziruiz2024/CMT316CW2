@@ -351,7 +351,7 @@ def setup_gui():
     
     model_choices = ["resnet18_32", "resnet18_64", "resnet18_128", "resnet34_32", "resnet34_64", "resnet34_128", "resnet50_32", "resnet50_64", "resnet101_32", 
                      "resnet152_32", "efficientnet_b0_32", "efficientnet_b0_64", "efficientnet_b1_32", "efficientnet_b1_64", "efficientnet_b2_32", "efficientnet_b3_32", 
-                     "efficientnet_b4_32", "vit_b_16_32", "vit_b_32_32", "vit_b_32_64", "vit_b_32_128", "twolayerscnn_32", "twolayerscnn_64"]
+                     "efficientnet_b4_32", "vit_b_16_32", "vit_b_32_32", "twolayerscnn_32"]
     
     # Labels
     model_label = tk.Label(root, text="Select the model to use for classification")
@@ -387,7 +387,7 @@ def on_submit_click(root, model_dropdown):
     os.environ['model_path'] = os.path.join(BASE_DIRECTORY, "Histories", f"{model_dropdown.get()}.pth")
     
     # Ensure model is available
-    if (download_pre_built_models(os.path.join(BASE_DIRECTORY, "Histories"), f"{os.environ['model_path']}")):
+    if (download_pre_built_models(f"{os.environ['model_path']}")):
         root.withdraw()
         MODEL, DEVICE = load_model()
         app.run(use_reloader=True)
