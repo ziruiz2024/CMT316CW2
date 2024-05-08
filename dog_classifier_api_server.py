@@ -1,3 +1,27 @@
+"""
+Deep Learning Image Classifier with Flask API
+
+This script allows the user to deploy a Flask web server that provides an API for image classification using pretrained models
+like ResNet, EfficientNet, Vision Transformer, and a custom TwoLayersCNN. It includes functionalities to build models, load and
+transform images, and predict image classes via a POST request.
+
+Key Features:
+- API to predict image classes using a simple HTTP POST request.
+- Dynamic model selection and loading mechanism based on user input via a graphical user interface (GUI).
+- Support for downloading pretrained models if not available locally.
+- Utilizes torchvision transforms to preprocess images for model inference.
+
+Dependencies:
+- torch, torchvision: For model definitions and transformations.
+- tkinter: For GUI to select model configurations.
+- Flask: For setting up the API server.
+- gdown, requests: For downloading files from the google drive.
+- scipy, PIL: For loading and processing image files.
+
+Usage:
+    Run this script directly from the command line to start the GUI and subsequently the Flask server for making predictions.
+    `python dog_classifier_api_server.py`
+"""
 import torch.nn as nn
 import torch
 import tkinter as tk
@@ -26,6 +50,20 @@ BASE_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 MODEL_CHOICE =   "efficientnet_b4_32"
 
 def build_model(model_name, categories):
+    """
+    Constructs a specified model architecture and adjusts its final layer based on the number of categories.
+
+    Parameters:
+        model_name (str): The name of the model architecture to build.
+        categories (list): List of category names that determines the output layer's size.
+
+    Returns:
+        nn.Module: The constructed model with the adapted output layer.
+        
+    Raises:
+        ValueError: If the specified model_name is not supported.
+    """
+    
     if model_name == 'twolayerscnn':
         model = TwoLayersCNN(len(categories))
     elif model_name == 'resnet18':
@@ -106,7 +144,21 @@ def build_model(model_name, categories):
     return model
 
 class TwoLayersCNN(nn.Module):
+    """
+    A simple convolutional neural network with two convolutional layers, designed for image classification tasks.
+
+    Attributes:
+        num_classes (int): Number of classes for the classification task.
+    """
+    
     def __init__(self, num_classes):
+        """
+        Initializes the TwoLayersCNN with two convolutional layers and a fully connected layer for classification.
+
+        Parameters:
+            num_classes (int): The number of unique classes in the dataset.
+        """
+        
         super(TwoLayersCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
@@ -115,6 +167,16 @@ class TwoLayersCNN(nn.Module):
         self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, x):
+        """
+        Forward pass of the network.
+
+        Parameters:
+            x (Tensor): Input tensor containing images.
+
+        Returns:
+            Tensor: Output tensor with class logits.
+        """
+        
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = x.view(-1, 128 * 56 * 56)
@@ -123,6 +185,13 @@ class TwoLayersCNN(nn.Module):
         return x
 
 def load_categories():
+    """
+    Loads category labels from a specified .mat file and maps them to indices.
+
+    Returns:
+        dict: A dictionary mapping category names to their respective zero-indexed labels.
+    """
+    
     # Get train list
     f = loadmat(os.path.join(BASE_DIRECTORY, "lists", "train_list.mat"))
     train_images = [x[0][0] for x in f['file_list']]
@@ -148,6 +217,13 @@ def load_categories():
 
 # Load the model
 def load_model():
+    """
+    Loads a model based on environment settings for model name and path. Handles full models and state dictionaries.
+
+    Returns:
+        tuple: Loaded model and the device it is loaded on.
+    """
+    
     if 'model_choice' in os.environ:
         DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model_path = os.environ['model_path']
@@ -171,8 +247,17 @@ def load_model():
     return model, DEVICE
 
 
-# Image processing
 def transform_image(image_bytes):
+    """
+    Transforms an image from binary bytes for model prediction.
+
+    Parameters:
+        image_bytes (bytes): Binary bytes of the image to be transformed.
+
+    Returns:
+        Tensor: Preprocessed image tensor ready for model input.
+    """
+    
      # Convert the binary data to a bytes or BytesIO object
     image = Image.open(io.BytesIO(image_bytes))
     my_transforms = transforms.Compose([
@@ -190,6 +275,13 @@ app.config['DEBUG'] = False  # Explicitly set debug to False
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    """
+    Flask route to handle dog breed image prediction requests. Expects an image file and returns the predicted dog breed class.
+
+    Returns:
+        json: JSON object containing the predicted class.
+    """
+    
     if request.method == 'POST':
         file = request.files['file']
         img_bytes = file.read()
@@ -202,7 +294,17 @@ def predict():
             response = {'prediction': prediction_class}
             return jsonify(response)
         
-def download_pre_built_models(histories_directory, model_file_path):
+def download_pre_built_models(model_file_path):
+    """
+    Attempts to download a pretrained model from a specified URL if it is not present locally.
+
+    Parameters:
+        model_file_path (str): Full path to the model file for downloading.
+
+    Returns:
+        bool: True if download is successful or file already exists, False otherwise.
+    """
+    
     is_download_successful = False
     
     pre_built_model_links = json.loads(json.dumps({"efficientnet_b0_32.pth":"https://drive.google.com/uc?export=download&id=1F4tOSJfweuBEGtSzMMpBPbJmtHXY2sp9",
@@ -239,6 +341,10 @@ def download_pre_built_models(histories_directory, model_file_path):
     return is_download_successful
         
 def setup_gui():
+    """
+    Initializes and displays a GUI for model selection. Provides a dropdown for selecting the model configuration.
+    """
+    
     root = tk.Tk()
     root.title = "Model Selection"
     root.geometry("300x200")
@@ -266,6 +372,14 @@ def setup_gui():
     root.mainloop()
 
 def on_submit_click(root, model_dropdown):
+    """
+    Handles the event when the submit button is clicked in the GUI. Sets the environment variables based on the selected model.
+
+    Parameters:
+        root (tk.Tk): The root window of the GUI.
+        model_dropdown (ttk.Combobox): The dropdown component with the model selections.
+    """
+    
     # Strip off the batch suffix from the model name
     model_name = model_dropdown.get()
     model_name = model_name[:(model_name.rfind('_'))]
@@ -281,6 +395,10 @@ def on_submit_click(root, model_dropdown):
         print("Model not found and program was unable to download pre-built model")
 
 def main():
+    """
+    Main function to initialize the GUI or reload the Flask server for predictions, depending on the environment state.
+    """
+    
     global MODEL, DEVICE, INDEX_TO_CLASS
     
     if 'WERKZEUG_LOADED' in os.environ:
