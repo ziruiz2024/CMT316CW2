@@ -16,7 +16,7 @@ In this task we will focus on images containing dogs as the object and with the 
 
 ### Images
 
-<div align="center">
+<div align="left">
     <img src="images/Figure1.png" width="60%">
     <p>Figure 1 Example image</p>
 </div>
@@ -26,7 +26,7 @@ The Images file contains the jpg images of the dog object in various settings. A
 
 ### Annotations
 
-<div align="center">
+<div align="left">
     <img src="images/Figure2.png" width="60%">
     <p>Figure 2 Example XML Info</p>
 </div>
@@ -47,7 +47,7 @@ The annotation file is an xml document with each image having its own annotation
 
 ### Train and Test list
 
-<div align="center">
+<div align="left">
     <img src="images/Figure3a.png" width="60%">
     <img src="images/Figure3b.png" width="60%">
     <p>Figure 3 Category counts of test and train set</p>
@@ -57,12 +57,12 @@ The training and testing data are contained in two .mat files named train_list.m
 
 The above graphs Figure 3 shows the number of objects on the y-axis and the categories of objects on the x-axis. Figure 3 shows that it is equal for every class with each category containing 100 objects meaning that the objects are distributed evenly. This is ideal for training as it ensures that the model will not be biassed towards any specific category. The test object distribution shown in Figure 3 reveals a high variance of total objects per category. Indicated by a significant difference between the highest and lowest number of objects across categories being 104 and standard deviation of 23.22. Benefits of high variance are that it mimics real-world classifying scenarios in that there is a high likelihood that one category may be more prominent than other categories. From this we gain a better understanding of how the model may work in a practical setting. Downsides to high variance may include metrics becoming less sensitive to misclassifications in less common categories. Meaning that even with a significant number of misclassifications in an uncommon category were to happen it may not significantly impact the overall accuracy of the classifier, possibly leading to misleading results.
 
-<div align="center">
+<div align="left">
     <img src="images/Figure4.png" width="60%">
     <p>Figure 4 Image width vs height (Train)</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure5.png" width="60%">
     <p>Figure 5 Image width vs height (Train)</p>
 </div>
@@ -81,14 +81,14 @@ As can be seen in table 1 the models accuracy was very poor performing below wha
 **Deep Learning Model**
 The task of classifying 120 different dog breeds is a complex task and it was quickly discovered that a simple CNN model was not sufficiently complex to provide accurate classification. Hence the decision to use a pre-trained model. Pre-trained models provide significant advantages for complex tasks such as image classification as they have already been trained on a large dataset and have a proven architecture. For the application of image classification, models are trained on a large dataset of images. ResNet 18, our initial top candidate for the task, is trained on the ImageNet Dataset which contains 14,197,122 annotated images according to (Russakovsky et al. 2014).This provides a generalised image classification model that can then be fine tuned to the specific task as required by adding additional layers or modifying the output layer to predict the classes. Pre-trained models help to increase accuracy for complex tasks as a model trained on a large and diverse dataset can generalise to similar problems faster and with much smaller datasets such as the stanford dogs dataset.
 
-<div align="center">
+<div align="left">
     <img src="images/Figure6.png" width="60%">
     <p>Figure 6 ResNet18 Architecture (Farheen Ramzan, et al)</p>
 </div>
 
 After comparing the performance of different deep learning models we decided to switch to the efficientnet_b4 deep learning model. There are many other good choices such as  Inception, VGG and MobileNet. Efficientnet_b4 was chosen due to its performance in testing as can be seen in (Table 2). Effcientnet_b4 introduced by (Tan et al 2020). Is a deep learning architecture developed for computer vision tasks. When compared in tests against other deep learning models on the same imageNet dataset that ResNet was trained on, by the Google Brain team it provided superior accuracy with less parameters than others (see fig bellow).
 
-<div align="center">
+<div align="left">
     <img src="images/Figure7.png" width="60%">
     <p>Figure 7 Deep Learning Model Comparison on ImageNet dataset (Tan et al 2020)</p>
 </div>
@@ -139,7 +139,7 @@ The results of the accuracies are listed as follows:
 
 The loss histories of the models are shown in the following figures:
 
-<div align="center">
+<div align="left">
     <img src="images/Figure8.png" width="60%">
     <p>Figure 8 Models accuracy and loss over epochs on test and train datasets</p>
 </div>
@@ -169,49 +169,49 @@ F1-Score: The F1-score is the harmonic mean of precision and recall. Because it 
 
 Below is a summarization of the key training metrics from our best-performing models:
 
-<div align="center">
+<div align="left">
     <img src="images/Table2.png" width="60%">
     <p>Figure 8 Models accuracy and loss over epochs on test and train datasets</p>
 </div>
 
 These results underscore the critical role of model architecture in achieving high accuracy, with deeper and more complex networks generally outperforming simpler ones. For a visual representation of model performance over training epochs, refer to Figures 9 through 19, which illustrate accuracy, precision, recall, and F1-score trends.
 
-<div align="center">
+<div align="left">
     <img src="images/Figure9.png" width="60%">
     <p>Figure 9 Resnet Accuracy</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure10.png" width="60%">
     <p>Figure 10 Efficientnet Accuracy</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure13.png" width="60%">
     <p>Figure 13 Resnet Precision</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure14.png" width="60%">
     <p>Figure 14 Efficientnet Precision</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure15.png" width="60%">
     <p>Figure 15 Resnet F1-Score</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure16.png" width="60%">
     <p>Figure 16 Efficientnet F1-Score</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure17.png" width="60%">
     <p>Figure 17 Resnet Recall</p>
 </div>
 
-<div align="center">
+<div align="left">
     <img src="images/Figure19.png" width="60%">
     <p>Figure 19 Efficientnet Recall</p>
 </div>
@@ -228,10 +228,41 @@ The error analysis carried out was part of a completely automated approach so it
 
 To do this, we opted for the standard approach of constructing a confusion matrix-like structure over the data to see where the misclassifications are happening. The following table represents information regarding the analysis.
 
-<div align="center">
+<div align="left">
     <img src="images/TableX.png" width="60%">
+    <img src="images/TableX2.png" width="60%">
+    <img src="images/TableX3.png" width="60%">
+    <img src="images/TableX4.png" width="60%">
     <p>TableX</p>
 </div>
+
+Moreover, we had to check how a particular breed misclassified. To achieve this, we parsed through our generated results and used a ‘voting system’ where the highest misclassification per breed represents its probable misclassification. This was one of the base hypotheses that we developed. Therefore, the data for such has also been appended to the above table in columns of ‘Misclassified Against’ and ‘Votes.’
+
+The results in the table do not include other misclassifications that any breed might have had. They include the one the model mostly got wrong for a particular breed. The data from the table was then visually investigated against the test data that was available to us. By doing such, we found the following:
+- Breeds mostly misclassify against other breeds which they resemble physically. Here, the physicality refers to traits that include but are not limited to:
+    - Colour
+    - Height
+    - Skin Pattern
+    - Facial Structure
+    - Eyes
+    - Skin Pattern
+- The above can be easily confirmed at multiple occasions in the table. As on many occasions there is a mutual misclassification between breeds. Where breed A misclassified as breed B, and this is also true vice versa.
+· However, the above does not strictly say that they will never classify as other breeds, as there is a large emphasis on photo quality too. Photo quality here refers to:
+    - The lighting in the picture.
+    - The strength of the camera and therefore the result (clarity).
+    - Irrelevant information in the picture.
+
+As part of the results and the corresponding visual analysis, we saw that when a breed misclassified against a particular breed on fewer occasions, it was more likely to have done so based on factors other than physical similarity.
+
+An example misclassification was between a whippet and an Italian greyhound (same order in the photos below), where the skin pattern was similar. An example is shared below.
+
+<div align="left">
+    <img src="images/Annex1a.png" width="60%">
+    <img src="images/Annex1b.png" width="60%">
+    <p>Annex 1</p>
+</div>
+
+A similar pattern was observed across other breeds as well.
 
 ## 7. Literature review / Related work
 
