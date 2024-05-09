@@ -51,16 +51,24 @@ def get_maximum_error(cat_list):
     
     return arr[index]
         
+def dump (lst, file_path):
+    with open(file_path, 'a') as file:
+        for item in lst:
+            file.write(item[0] + "  " + item[1] + "  " + str(item[2]) + '\n')
+    
 
 def generate_report(err_arr):
     visited = []
+    arr = []
 
     for cl in err_arr:
         if cl[0] not in visited:
-            print(get_maximum_error(
+            arr.append(get_maximum_error(
                 get_category_list(cl[0], err_arr)
             ))
             visited.append(cl[0])    
+    
+    dump(arr, "D:\\APML\\test_folder\\misclassification_report.txt")
     
 
 generate_report(get_classifications())
