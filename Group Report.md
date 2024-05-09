@@ -8,6 +8,7 @@ Each member of the team has been allocated specific roles to ensure an efficient
 
 Through the classification project we hope to gain valuable insights in the implementation of machine learning algorithms that are specifically used in image classification. These insights may include limitations that occur at different stages of implementation and how they were overcome, and what methods at these different stages provided the best results through performance evaluation.
 
+
 ## 2. Description of the task/dataset
 
 ### Introduction
@@ -171,7 +172,7 @@ Below is a summarization of the key training metrics from our best-performing mo
 
 <div align="left">
     <img src="images/Table2.png" width="60%">
-    <p>Figure 8 Models accuracy and loss over epochs on test and train datasets</p>
+    <p>Table 2 Model Training Metrics</p>
 </div>
 
 These results underscore the critical role of model architecture in achieving high accuracy, with deeper and more complex networks generally outperforming simpler ones. For a visual representation of model performance over training epochs, refer to Figures 9 through 19, which illustrate accuracy, precision, recall, and F1-score trends.
@@ -184,6 +185,16 @@ These results underscore the critical role of model architecture in achieving hi
 <div align="left">
     <img src="images/Figure10.png" width="60%">
     <p>Figure 10 Efficientnet Accuracy</p>
+</div>
+
+<div align="left">
+    <img src="images/Figure11.png" width="60%">
+    <p>Figure 11 ViT_b Accuracy</p>
+</div>
+
+<div align="left">
+    <img src="images/Figure12.png" width="60%">
+    <p>Figure 12 Resnet Precision</p>
 </div>
 
 <div align="left">
@@ -212,6 +223,11 @@ These results underscore the critical role of model architecture in achieving hi
 </div>
 
 <div align="left">
+    <img src="images/Figure18.png" width="60%">
+    <p>Figure 18 Resnet Recall</p>
+</div>
+
+<div align="left">
     <img src="images/Figure19.png" width="60%">
     <p>Figure 19 Efficientnet Recall</p>
 </div>
@@ -233,7 +249,7 @@ To do this, we opted for the standard approach of constructing a confusion matri
     <img src="images/TableX2.png" width="60%">
     <img src="images/TableX3.png" width="60%">
     <img src="images/TableX4.png" width="60%">
-    <p>TableX</p>
+    <p>Table 3 Compilation of Error Analysis Results</p>
 </div>
 
 Moreover, we had to check how a particular breed misclassified. To achieve this, we parsed through our generated results and used a ‘voting system’ where the highest misclassification per breed represents its probable misclassification. This was one of the base hypotheses that we developed. Therefore, the data for such has also been appended to the above table in columns of ‘Misclassified Against’ and ‘Votes.’
@@ -259,15 +275,37 @@ An example misclassification was between a whippet and an Italian greyhound (sam
 <div align="left">
     <img src="images/Annex1a.png" width="60%">
     <img src="images/Annex1b.png" width="60%">
-    <p>Annex 1</p>
+    <p>Figure 21 Side by Side Comparison of Breeds</p>
 </div>
 
 A similar pattern was observed across other breeds as well.
 
 ## 7. Literature review / Related work
 
-Overview of the related work most connected to the methods and tasks of the projects. Explain the differences and the connection between works in the literature with respect to the employed method (e.g. advantages/disadvantages, ideas you exploited, etc.).
-Tip: Google Scholar is an excellent resource to find relevant articles to any of the topics.
+The task of fine-grained image classification has seen remarkable advances with the development of sophisticated machine learning techniques, particularly deep learning. The following is a review of the literature surrounding the methods we tested.
+
+### Early CNNs
+
+The use of CNNs for the task of image classification marked a major breakthrough in performance. One such early model was AlexNet, introduced by Krizhevsky et al. (2012), which revealed the power of deep learning for visual tasks. The model performed well in ILSVRC, achieving a top-5 error of 15.3% in ILSVRC 2012, more than 10.8% lower than that of the runner-up. The model utilizes eight learned layers (5 convolutional, and 3 fully-connected) to capture spatial hierarchies in images. AlexNet highlighted the capability of deep CNNs to learn challenging datasets using purely supervised learning, and set the stage for subsequent advancements in deep learning. (Krizhevsky et al. 2012)
+
+### ResNet and Deeper Architectures
+
+He et al. (2015) introduced the ResNet model, which makes use of residual learning. A key problem faced when training deep CNNs is the vanishing/exploding gradient problem, where loss gradients used during backpropagation become extremely small or extremely large. The residual learning framework offers a solution to this by adding residual connections to the network, helping to maintain information flow through the CNN. This allows ResNet to utilise over 100 layers, significantly improving classification performance. (He et al. 2015)
+
+### EfficientNet and Model Scaling
+
+A subsequent advancement came from Tan and Lee (2020) when they introduced the EfficientNet model. EfficientNet performs better than traditional CNNs such as ResNet while having fewer parameters and FLOPS (Tan and Lee 2020). This is because EfficientNet architecture scales the CNN’s depth, width, and resolution uniformly using a compound scaling method. The study performed by Tan and Lee found that scaling all dimensions together yielded better performance than traditional methods that only scaled one dimension at a time. From a family of models developed, EfficientNet-B4 showed notable results, improving ImageNet to 82.9% accuracy, while using far fewer resources than ResNet. This impressive result on ImageNet translated to an equally impressive result in our project, scoring the highest accuracy of 89.74%. This shows how effective an EfficientNet architecture is for image classification, in particular dog breed classification, with limited computational resources. (Tan and Lee 2020)
+
+### Vision Transformers (ViTs)
+
+The focus of more recent research has been on the adaptation of transformers to image classification tasks. Introduced by Dosovitskiy et al. (2021), vision transformers (ViTs) have shown competitive performance against other learning techniques on tasks such as the ImageNet challenge (Dosovitskiy et al. 2021). The model splits the image into a number of patches which are processed by the transformer encoder in sequence, similar to how words are processed in text. It does this to understand the local and global features of the image. The literature shows that this approach, which was originally designed for NLP, achieves excellent performance when pre-trained on a large dataset like ImageNet, and fine-tuned on a smaller dataset (such as Stanford Dogs). In our testing, ViTs performed excellently, specifically ViT-B-16 achieved an accuracy of 88.53%. This demonstrates the potential of ViTs in the field of classifying images. (Dosovitskiy et al. 2021)
+
+### Comparative Analysis
+
+This brief review has highlighted a number of key advances in image classification techniques. Most notable for our project are ResNet, EfficientNet and ViTs. Through ResNet’s use of residual connections and convolutional layers, the vanishing/exploding gradients problem it tackled, and deep CNNs are viable. However, the framework can be computationally intensive compared to the alternatives. (He et al. 2015)
+EfficientNet offers greater performance while using fewer resources through its scaling of the CNN’s dimensions. This method balances accuracy with efficiency, making it a very suitable model, especially for computationally limited applications. (Tan and Lee 2020)
+Finally, ViTs are an innovative approach, adapted from NLP, which has the potential to perform very well with sufficient computational resources and large enough datasets. ViTs work best when pre-trained, hence a slightly limited performance in our testing. (Dosovitskiy et al. 2021)
+
 
 ## 8. Conclusion and future work
 
@@ -280,7 +318,6 @@ Another issue that arose was the accuracy of images that were of poor quality, i
 
 We believe that the model could hold potential real-world applications. These would include the identification and care of stray dogs. Through the use of machine learning models, animal shelters can determine the breeds of these rescued dogs to better understand their needs and behaviours. This information can then be passed onto those who will potentially adopt the dog or any veterinary expert to determine the diagnosis of any health condition that may be afflicting the dog, as many breeds are predisposed to certain conditions, i.e. German shepherds and hip dysplasia. It is hoped through this application that it could potentially determine health conditions quicker and improve the quality of life for dogs such as these.
 
-
 ## 9. Git repository
 
 Github repository: https://github.com/ziruiz2024/CMT316CW2.git
@@ -288,8 +325,16 @@ Github repository: https://github.com/ziruiz2024/CMT316CW2.git
 ## 10. References
 
 Farheen R, et al. 2019 . A Deep Learning Approach for Automated Diagnosis and Multi-Class Classification of Alzheimer’s Disease Stages Using Resting-State fMRI and Residual Neural Networks, Journal of Medical Systems, doi: Available at: https://link.springer.com/article/10.1007/s10916-019-1475-2
+
 Russakovsky, O. et al. 2014. ImageNet Large Scale Visual Recognition Challenge. Available at: https://arxiv.org/abs/1409.0575.
+
 Tan, M. and Le, Q. 2020. EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks. Available at: https://arxiv.org/pdf/1905.11946.
+
+Krizhevsky, A., Sutskever, I. and Hinton, G.E. (2012). ImageNet Classification with Deep Convolutional Neural Networks. Available at: https://doi.org/10.1145/3065386.
+
+He, K., Zhang, X., Ren, S. and Sun, J. (2015). Deep Residual Learning for Image Recognition. Available at: https://arxiv.org/pdf/1512.03385.
+
+Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., Uszkoreit, J. and Houlsby, N. (n.d.). AN IMAGE IS WORTH 16X16 WORDS: TRANSFORMERS FOR IMAGE RECOGNITION AT SCALE. Available at: https://arxiv.org/pdf/2010.11929.
 
 
 
